@@ -55,6 +55,16 @@ pub enum EncryptionError {
         message: String,
     },
 
+    /// Plugin initialization failed.
+    ///
+    /// This error occurs during plugin initialization when configuration
+    /// is invalid or required resources cannot be obtained.
+    #[error("Initialization failed: {message}")]
+    InitializationFailed {
+        /// Detailed description of the initialization failure
+        message: String,
+    },
+
     /// Plugin has not been properly initialized.
     ///
     /// This error occurs when encryption/decryption operations are attempted
@@ -96,8 +106,9 @@ impl EncryptionError {
     /// - `-2`: Invalid input
     /// - `-3`: Encryption failed
     /// - `-4`: Decryption failed
-    /// - `-5`: Plugin not initialized
-    /// - `-6`: Invalid signature
+    /// - `-5`: Initialization failed
+    /// - `-6`: Plugin not initialized
+    /// - `-7`: Invalid signature
     /// - `-99`: Internal error
     pub fn to_error_code(&self) -> i32 {
         match self {
@@ -105,8 +116,9 @@ impl EncryptionError {
             EncryptionError::InvalidInput { .. } => -2,
             EncryptionError::EncryptionFailed { .. } => -3,
             EncryptionError::DecryptionFailed { .. } => -4,
-            EncryptionError::NotInitialized => -5,
-            EncryptionError::InvalidSignature { .. } => -6,
+            EncryptionError::InitializationFailed { .. } => -5,
+            EncryptionError::NotInitialized => -6,
+            EncryptionError::InvalidSignature { .. } => -7,
             EncryptionError::Internal { .. } => -99,
         }
     }

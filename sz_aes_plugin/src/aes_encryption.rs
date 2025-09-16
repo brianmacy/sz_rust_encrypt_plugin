@@ -171,19 +171,60 @@ impl AesEncryption {
 
 impl EncryptionProvider for AesEncryption {
     fn init(&mut self) -> Result<()> {
-        // In a real implementation, this key would come from configuration
-        // For this example, we derive it from the signature
-        let signature_bytes = AES_SIGNATURE.as_bytes();
-        for (i, byte) in self.key.iter_mut().enumerate() {
-            *byte = signature_bytes[i % signature_bytes.len()];
+        // Read key from environment variable
+        let key_hex =
+            std::env::var("SZ_AES_KEY").map_err(|_| EncryptionError::InitializationFailed {
+                message: "SZ_AES_KEY environment variable not set".to_string(),
+            })?;
+
+        if key_hex.len() != AES_KEY_SIZE * 2 {
+            return Err(EncryptionError::InitializationFailed {
+                message: format!(
+                    "SZ_AES_KEY must be {} hex characters (32 bytes)",
+                    AES_KEY_SIZE * 2
+                ),
+            });
         }
 
-        // Initialize deterministic IV the same way as the key
-        // In a real implementation, this IV would also come from configuration
-        let iv_source = format!("{}__IV", AES_SIGNATURE);
-        let iv_source_bytes = iv_source.as_bytes();
-        for (i, byte) in self.deterministic_iv.iter_mut().enumerate() {
-            *byte = iv_source_bytes[i % iv_source_bytes.len()];
+        // Parse hex key
+        for (i, chunk) in key_hex.as_bytes().chunks(2).enumerate() {
+            let hex_str =
+                std::str::from_utf8(chunk).map_err(|_| EncryptionError::InitializationFailed {
+                    message: "Invalid hex characters in SZ_AES_KEY".to_string(),
+                })?;
+            self.key[i] = u8::from_str_radix(hex_str, 16).map_err(|_| {
+                EncryptionError::InitializationFailed {
+                    message: "Invalid hex characters in SZ_AES_KEY".to_string(),
+                }
+            })?;
+        }
+
+        // Read IV from environment variable
+        let iv_hex =
+            std::env::var("SZ_AES_IV").map_err(|_| EncryptionError::InitializationFailed {
+                message: "SZ_AES_IV environment variable not set".to_string(),
+            })?;
+
+        if iv_hex.len() != AES_IV_SIZE * 2 {
+            return Err(EncryptionError::InitializationFailed {
+                message: format!(
+                    "SZ_AES_IV must be {} hex characters (16 bytes)",
+                    AES_IV_SIZE * 2
+                ),
+            });
+        }
+
+        // Parse hex IV
+        for (i, chunk) in iv_hex.as_bytes().chunks(2).enumerate() {
+            let hex_str =
+                std::str::from_utf8(chunk).map_err(|_| EncryptionError::InitializationFailed {
+                    message: "Invalid hex characters in SZ_AES_IV".to_string(),
+                })?;
+            self.deterministic_iv[i] = u8::from_str_radix(hex_str, 16).map_err(|_| {
+                EncryptionError::InitializationFailed {
+                    message: "Invalid hex characters in SZ_AES_IV".to_string(),
+                }
+            })?;
         }
 
         Ok(())
@@ -241,6 +282,14 @@ mod tests {
 
     #[test]
     fn test_aes_encryption_roundtrip() {
+        unsafe {
+            std::env::set_var(
+                "SZ_AES_KEY",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            );
+            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
+        }
+
         let mut encryption = AesEncryption::new();
         encryption.init().unwrap();
 
@@ -254,6 +303,14 @@ mod tests {
 
     #[test]
     fn test_aes_deterministic_encryption() {
+        unsafe {
+            std::env::set_var(
+                "SZ_AES_KEY",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            );
+            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
+        }
+
         let mut encryption = AesEncryption::new();
         encryption.init().unwrap();
 
@@ -269,6 +326,14 @@ mod tests {
 
     #[test]
     fn test_aes_non_deterministic_encryption() {
+        unsafe {
+            std::env::set_var(
+                "SZ_AES_KEY",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            );
+            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
+        }
+
         let mut encryption = AesEncryption::new();
         encryption.init().unwrap();
 
@@ -288,6 +353,14 @@ mod tests {
 
     #[test]
     fn test_empty_string() {
+        unsafe {
+            std::env::set_var(
+                "SZ_AES_KEY",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            );
+            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
+        }
+
         let mut encryption = AesEncryption::new();
         encryption.init().unwrap();
 

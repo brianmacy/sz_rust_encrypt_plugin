@@ -26,10 +26,10 @@ Provides shared components used by all encryption plugins:
 
 ### AES Plugin (`sz_aes_plugin`)
 
-Production-ready encryption using AES-256-CBC:
+AES-256-CBC encryption using environment-configured keys:
 
-- **Non-deterministic encryption**: Uses random IVs for maximum security
-- **Deterministic encryption**: Uses fixed IV derived from signature for consistent results
+- **Environment configuration**: Key and IV from `SZ_AES_KEY` and `SZ_AES_IV`
+- **Deterministic encryption**: Uses configured IV for consistent results
 - **Base64 encoding**: All encrypted output is base64-encoded
 - **Memory safety**: Automatic zeroization of sensitive data
 - **Thread safety**: Global state management with proper synchronization
@@ -40,10 +40,11 @@ Generated library: `libsz_aes_encrypt_plugin.so`
 
 Simple XOR-based encryption for development and testing:
 
-- **XOR cipher**: Uses plugin signature as encryption key
+- **Environment configuration**: Key from `SZ_DUMMY_KEY`
+- **XOR cipher**: Uses configured key for encryption
 - **Deterministic**: Same input always produces same output
 - **Base64 encoding**: Consistent with AES plugin output format
-- **Development only**: Not suitable for production use
+- **Development only**: Not suitable for security purposes
 
 Generated library: `libsz_dummy_encrypt_plugin.so`
 
@@ -77,9 +78,33 @@ C header files are generated in each plugin's `include/` directory:
 - `sz_aes_plugin/include/sz_aes_encrypt_plugin.h`
 - `sz_dummy_plugin/include/sz_dummy_encrypt_plugin.h`
 
-## Testing
+## Configuration
+
+Both plugins require environment variables for operation:
+
+### AES Plugin Environment Variables
 
 ```bash
+export SZ_AES_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"  # 64 hex chars (32 bytes)
+export SZ_AES_IV="0123456789abcdef0123456789abcdef"                                    # 32 hex chars (16 bytes)
+```
+
+### Dummy Plugin Environment Variables
+
+```bash
+export SZ_DUMMY_KEY="44554d4d595f584f525f763130"  # Any even number of hex chars
+```
+
+## Testing
+
+### Rust Tests
+
+```bash
+# Set environment variables first
+export SZ_AES_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+export SZ_AES_IV="0123456789abcdef0123456789abcdef"
+export SZ_DUMMY_KEY="44554d4d595f584f525f763130"
+
 # Run all tests
 cargo test --workspace
 
@@ -87,6 +112,19 @@ cargo test --workspace
 cargo test -p sz_aes_plugin
 cargo test -p sz_dummy_plugin
 cargo test -p sz_common
+```
+
+### C Integration Tests
+
+```bash
+# Build C examples with CMake
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --parallel
+
+# Run tests (environment variables set automatically)
+./bin/test_aes
+./bin/test_dummy
 ```
 
 ## C Interface
@@ -177,14 +215,37 @@ int main() {
 
 ### Building C Examples
 
+Use CMake for building C examples:
+
 ```bash
+# Configure and build
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --parallel
+
+# Run examples
+./bin/test_aes
+./bin/test_dummy
+```
+
+Or manually with GCC:
+
+```bash
+# Set environment variables first
+export SZ_AES_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+export SZ_AES_IV="0123456789abcdef0123456789abcdef"
+export SZ_DUMMY_KEY="44554d4d595f584f525f763130"
+
+# Build Rust libraries
+cargo build --release --workspace
+
 # For AES plugin
-gcc -o aes_test examples/c_usage_example.c -L./target/release -lsz_aes_encrypt_plugin -Wl,-rpath,./target/release
-./aes_test
+gcc -o examples/test_aes examples/test_aes_plugin.c -L./target/release -lsz_aes_encrypt_plugin -Wl,-rpath,./target/release
+./examples/test_aes
 
 # For Dummy plugin
-gcc -o dummy_test examples/c_usage_example.c -L./target/release -lsz_dummy_encrypt_plugin -Wl,-rpath,./target/release
-./dummy_test
+gcc -o examples/test_dummy examples/test_dummy_plugin.c -L./target/release -lsz_dummy_encrypt_plugin -Wl,-rpath,./target/release
+./examples/test_dummy
 ```
 
 ## Plugin Signatures
@@ -247,7 +308,14 @@ sz_rust_encrypt_plugin/
 │       ├── lib.rs               # Plugin entry point
 │       ├── dummy_encryption.rs  # XOR implementation
 │       └── c_interface.rs       # C FFI wrapper
-└── README.md                    # This file
+├── examples/                    # C integration tests
+│   ├── CMakeLists.txt          # Standalone CMake build
+│   ├── test_aes_plugin.c       # AES plugin test program
+│   └── test_dummy_plugin.c     # Dummy plugin test program
+├── build/                       # CMake build directory
+├── CMakeLists.txt              # Main CMake configuration
+├── LICENSE                     # Apache 2.0 license
+└── README.md                   # This file
 ```
 
 ### Adding New Plugins

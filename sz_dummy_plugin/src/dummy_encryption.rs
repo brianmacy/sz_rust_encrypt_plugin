@@ -64,8 +64,39 @@ impl DummyEncryption {
 
 impl EncryptionProvider for DummyEncryption {
     fn init(&mut self) -> Result<()> {
-        // Use the signature as the XOR key
-        self.key = DUMMY_SIGNATURE.as_bytes().to_vec();
+        // Read key from environment variable
+        let key_hex =
+            std::env::var("SZ_DUMMY_KEY").map_err(|_| EncryptionError::InitializationFailed {
+                message: "SZ_DUMMY_KEY environment variable not set".to_string(),
+            })?;
+
+        if key_hex.is_empty() {
+            return Err(EncryptionError::InitializationFailed {
+                message: "SZ_DUMMY_KEY cannot be empty".to_string(),
+            });
+        }
+
+        if key_hex.len() % 2 != 0 {
+            return Err(EncryptionError::InitializationFailed {
+                message: "SZ_DUMMY_KEY must have even number of hex characters".to_string(),
+            });
+        }
+
+        // Parse hex key
+        self.key.clear();
+        for chunk in key_hex.as_bytes().chunks(2) {
+            let hex_str =
+                std::str::from_utf8(chunk).map_err(|_| EncryptionError::InitializationFailed {
+                    message: "Invalid hex characters in SZ_DUMMY_KEY".to_string(),
+                })?;
+            let byte = u8::from_str_radix(hex_str, 16).map_err(|_| {
+                EncryptionError::InitializationFailed {
+                    message: "Invalid hex characters in SZ_DUMMY_KEY".to_string(),
+                }
+            })?;
+            self.key.push(byte);
+        }
+
         Ok(())
     }
 
@@ -149,6 +180,10 @@ mod tests {
 
     #[test]
     fn test_dummy_encryption_roundtrip() {
+        unsafe {
+            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
+        }
+
         let mut encryption = DummyEncryption::new();
         encryption.init().unwrap();
 
@@ -162,6 +197,10 @@ mod tests {
 
     #[test]
     fn test_dummy_encryption_deterministic() {
+        unsafe {
+            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
+        }
+
         let mut encryption = DummyEncryption::new();
         encryption.init().unwrap();
 
@@ -177,6 +216,10 @@ mod tests {
 
     #[test]
     fn test_regular_and_deterministic_same() {
+        unsafe {
+            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
+        }
+
         let mut encryption = DummyEncryption::new();
         encryption.init().unwrap();
 
@@ -190,6 +233,10 @@ mod tests {
 
     #[test]
     fn test_empty_string() {
+        unsafe {
+            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
+        }
+
         let mut encryption = DummyEncryption::new();
         encryption.init().unwrap();
 
@@ -201,6 +248,10 @@ mod tests {
 
     #[test]
     fn test_invalid_ciphertext() {
+        unsafe {
+            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
+        }
+
         let mut encryption = DummyEncryption::new();
         encryption.init().unwrap();
 
@@ -218,6 +269,10 @@ mod tests {
 
     #[test]
     fn test_unicode_support() {
+        unsafe {
+            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
+        }
+
         let mut encryption = DummyEncryption::new();
         encryption.init().unwrap();
 
