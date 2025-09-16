@@ -4,8 +4,10 @@
 //! for dynamic plugin loading and operation.
 
 use crate::aes_encryption::AesEncryption;
-use sz_common::{error_to_c_buffer, string_to_c_buffer, c_str_to_string, EncryptionError, EncryptionProvider};
 use std::sync::{Mutex, OnceLock};
+use sz_common::{
+    EncryptionError, EncryptionProvider, c_str_to_string, error_to_c_buffer, string_to_c_buffer,
+};
 
 static AES_ENCRYPTION: OnceLock<Mutex<Option<AesEncryption>>> = OnceLock::new();
 
@@ -17,9 +19,11 @@ fn with_encryption<F, R>(f: F) -> Result<R, EncryptionError>
 where
     F: FnOnce(&AesEncryption) -> Result<R, EncryptionError>,
 {
-    let encryption_lock = get_encryption().lock().map_err(|_| EncryptionError::Internal {
-        message: "Failed to acquire encryption lock".to_string(),
-    })?;
+    let encryption_lock = get_encryption()
+        .lock()
+        .map_err(|_| EncryptionError::Internal {
+            message: "Failed to acquire encryption lock".to_string(),
+        })?;
 
     match encryption_lock.as_ref() {
         Some(encryption) => f(encryption),
@@ -45,9 +49,12 @@ pub unsafe extern "C" fn G2Encryption_InitPlugin(
         let mut encryption = AesEncryption::new();
         encryption.init()?;
 
-        let mut encryption_lock = get_encryption().lock().map_err(|_| EncryptionError::Internal {
-            message: "Failed to acquire encryption lock".to_string(),
-        })?;
+        let mut encryption_lock =
+            get_encryption()
+                .lock()
+                .map_err(|_| EncryptionError::Internal {
+                    message: "Failed to acquire encryption lock".to_string(),
+                })?;
 
         *encryption_lock = Some(encryption);
         Ok(())
@@ -55,7 +62,7 @@ pub unsafe extern "C" fn G2Encryption_InitPlugin(
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }
 
@@ -67,9 +74,12 @@ pub unsafe extern "C" fn G2Encryption_ClosePlugin(
     error_size: *mut libc::size_t,
 ) -> libc::c_int {
     let result = (|| -> Result<(), EncryptionError> {
-        let mut encryption_lock = get_encryption().lock().map_err(|_| EncryptionError::Internal {
-            message: "Failed to acquire encryption lock".to_string(),
-        })?;
+        let mut encryption_lock =
+            get_encryption()
+                .lock()
+                .map_err(|_| EncryptionError::Internal {
+                    message: "Failed to acquire encryption lock".to_string(),
+                })?;
 
         if let Some(ref mut encryption) = encryption_lock.as_mut() {
             encryption.close()?;
@@ -81,7 +91,7 @@ pub unsafe extern "C" fn G2Encryption_ClosePlugin(
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }
 
@@ -97,12 +107,19 @@ pub unsafe extern "C" fn G2Encryption_GetSignature(
 ) -> libc::c_int {
     let result = with_encryption(|encryption| {
         let signature = encryption.signature();
-        string_to_c_buffer(signature, signature_buffer, max_signature_size, signature_size)
+        unsafe {
+            string_to_c_buffer(
+                signature,
+                signature_buffer,
+                max_signature_size,
+                signature_size,
+            )
+        }
     });
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }
 
@@ -122,7 +139,7 @@ pub unsafe extern "C" fn G2Encryption_ValidateSignatureCompatibility(
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }
 
@@ -141,12 +158,12 @@ pub unsafe extern "C" fn G2Encryption_EncryptDataField(
     let result = (|| -> Result<(), EncryptionError> {
         let plaintext = c_str_to_string(input, input_size)?;
         let encrypted = with_encryption(|encryption| encryption.encrypt(&plaintext))?;
-        string_to_c_buffer(&encrypted, result_buffer, max_result_size, result_size)
+        unsafe { string_to_c_buffer(&encrypted, result_buffer, max_result_size, result_size) }
     })();
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }
 
@@ -165,12 +182,12 @@ pub unsafe extern "C" fn G2Encryption_DecryptDataField(
     let result = (|| -> Result<(), EncryptionError> {
         let ciphertext = c_str_to_string(input, input_size)?;
         let decrypted = with_encryption(|encryption| encryption.decrypt(&ciphertext))?;
-        string_to_c_buffer(&decrypted, result_buffer, max_result_size, result_size)
+        unsafe { string_to_c_buffer(&decrypted, result_buffer, max_result_size, result_size) }
     })();
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }
 
@@ -189,12 +206,12 @@ pub unsafe extern "C" fn G2Encryption_EncryptDataFieldDeterministic(
     let result = (|| -> Result<(), EncryptionError> {
         let plaintext = c_str_to_string(input, input_size)?;
         let encrypted = with_encryption(|encryption| encryption.encrypt_deterministic(&plaintext))?;
-        string_to_c_buffer(&encrypted, result_buffer, max_result_size, result_size)
+        unsafe { string_to_c_buffer(&encrypted, result_buffer, max_result_size, result_size) }
     })();
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }
 
@@ -212,12 +229,13 @@ pub unsafe extern "C" fn G2Encryption_DecryptDataFieldDeterministic(
 ) -> libc::c_int {
     let result = (|| -> Result<(), EncryptionError> {
         let ciphertext = c_str_to_string(input, input_size)?;
-        let decrypted = with_encryption(|encryption| encryption.decrypt_deterministic(&ciphertext))?;
-        string_to_c_buffer(&decrypted, result_buffer, max_result_size, result_size)
+        let decrypted =
+            with_encryption(|encryption| encryption.decrypt_deterministic(&ciphertext))?;
+        unsafe { string_to_c_buffer(&decrypted, result_buffer, max_result_size, result_size) }
     })();
 
     match result {
         Ok(()) => 0,
-        Err(e) => error_to_c_buffer(&e, error_buffer, max_error_size, error_size),
+        Err(e) => unsafe { error_to_c_buffer(&e, error_buffer, max_error_size, error_size) },
     }
 }

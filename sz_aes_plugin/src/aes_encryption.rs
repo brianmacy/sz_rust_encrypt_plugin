@@ -6,20 +6,20 @@
 use crate::AES_SIGNATURE;
 use aes::Aes256;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use base64::{Engine as _, engine::general_purpose};
 use cbc::{Decryptor, Encryptor};
 use rand::RngCore;
 use sz_common::{
-    add_encryption_prefix, has_encryption_prefix, remove_encryption_prefix,
-    EncryptionError, EncryptionProvider, Result,
+    EncryptionError, EncryptionProvider, Result, add_encryption_prefix, has_encryption_prefix,
+    remove_encryption_prefix,
 };
-use base64::{engine::general_purpose, Engine as _};
 use zeroize::Zeroize;
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
 
 const AES_KEY_SIZE: usize = 32; // 256 bits
-const AES_IV_SIZE: usize = 16;  // 128 bits
+const AES_IV_SIZE: usize = 16; // 128 bits
 const AES_BLOCK_SIZE: usize = 16;
 
 /// AES-256-CBC encryption implementation.
@@ -96,7 +96,10 @@ impl AesEncryption {
         let encryptor = Aes256CbcEnc::new(&self.key.into(), iv.into());
         let mut encrypted = padded_data.clone();
         encryptor
-            .encrypt_padded_mut::<cbc::cipher::block_padding::NoPadding>(&mut encrypted, padded_data.len())
+            .encrypt_padded_mut::<cbc::cipher::block_padding::NoPadding>(
+                &mut encrypted,
+                padded_data.len(),
+            )
             .map_err(|e| EncryptionError::EncryptionFailed {
                 message: format!("AES encryption failed: {:?}", e),
             })?;
@@ -137,9 +140,12 @@ impl AesEncryption {
 
         // Extract IV and encrypted data
         let (iv_bytes, encrypted_bytes) = encrypted_data.split_at(AES_IV_SIZE);
-        let iv: [u8; AES_IV_SIZE] = iv_bytes.try_into().map_err(|_| EncryptionError::DecryptionFailed {
-            message: "Invalid IV size".to_string(),
-        })?;
+        let iv: [u8; AES_IV_SIZE] =
+            iv_bytes
+                .try_into()
+                .map_err(|_| EncryptionError::DecryptionFailed {
+                    message: "Invalid IV size".to_string(),
+                })?;
 
         let decryptor = Aes256CbcDec::new(&self.key.into(), &iv.into());
         let mut decrypted = encrypted_bytes.to_vec();

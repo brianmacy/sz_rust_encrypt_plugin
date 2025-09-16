@@ -25,7 +25,22 @@ pub fn c_str_to_string(c_str: *const libc::c_char, len: usize) -> Result<String>
     })
 }
 
-pub fn string_to_c_buffer(
+/// Convert a Rust string to a C buffer with null termination.
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers (`buffer` and `actual_size`)
+/// - Assumes the pointers are valid and properly aligned
+/// - Assumes the buffer has at least `max_size` bytes allocated
+/// - Writes to memory through raw pointers
+///
+/// The caller must ensure:
+/// - `buffer` points to a valid memory region of at least `max_size` bytes
+/// - `actual_size` points to a valid `usize` location
+/// - The pointers remain valid for the duration of this function call
+/// - No other code is concurrently modifying the pointed-to memory
+pub unsafe fn string_to_c_buffer(
     s: &str,
     buffer: *mut libc::c_char,
     max_size: usize,
@@ -59,7 +74,13 @@ pub fn string_to_c_buffer(
     Ok(())
 }
 
-pub fn error_to_c_buffer(
+/// Convert an error to a C buffer and return error code.
+///
+/// # Safety
+///
+/// This function is unsafe because it calls `string_to_c_buffer` which
+/// dereferences raw pointers. See `string_to_c_buffer` safety requirements.
+pub unsafe fn error_to_c_buffer(
     error: &EncryptionError,
     error_buffer: *mut libc::c_char,
     max_error_size: usize,
@@ -69,7 +90,9 @@ pub fn error_to_c_buffer(
     let error_message = error.to_string();
 
     if !error_buffer.is_null() && !error_size.is_null() {
-        let _ = string_to_c_buffer(&error_message, error_buffer, max_error_size, error_size);
+        unsafe {
+            let _ = string_to_c_buffer(&error_message, error_buffer, max_error_size, error_size);
+        }
     }
 
     error_code

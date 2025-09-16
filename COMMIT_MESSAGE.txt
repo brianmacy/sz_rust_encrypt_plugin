@@ -1,0 +1,30 @@
+Add Rust workspace with separate AES and Dummy encryption plugins
+
+Implement modular Senzing encryption plugin architecture with:
+
+- sz_common: Shared utilities, traits, and error handling (394 lines)
+- sz_aes_plugin: AES-256-CBC production encryption (533 lines)
+- sz_dummy_plugin: XOR testing encryption (461 lines)
+
+Features:
+- C-compatible shared libraries for Senzing integration
+- Comprehensive error handling and memory safety
+- Thread-safe plugin lifecycle management
+- Deterministic and non-deterministic encryption modes
+- Base64 encoded output with ENC: prefix
+- Complete test coverage (21 tests, all passing)
+
+Generated libraries:
+- libsz_aes_encrypt_plugin.so (AES256_CBC_PKCS7_B64_2024)
+- libsz_dummy_encrypt_plugin.so (DUMMY_XOR_B64_2024)
+
+Security: AES plugin uses secure random IVs, automatic memory clearing,
+and proper PKCS#7 padding. Dummy plugin is for development/testing only.
+
+Technical implementation:
+- Rust 2024 edition with workspace dependencies
+- Unsafe FFI code properly documented and isolated
+- Memory safety with zeroize for sensitive data
+- Thread-safe global state with Mutex
+- Comprehensive error handling with structured types
+- Full C interface compatibility for Senzing

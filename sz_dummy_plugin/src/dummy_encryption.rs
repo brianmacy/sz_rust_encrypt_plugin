@@ -5,11 +5,11 @@
 //! and testing purposes.
 
 use crate::DUMMY_SIGNATURE;
+use base64::{Engine as _, engine::general_purpose};
 use sz_common::{
-    add_encryption_prefix, has_encryption_prefix, remove_encryption_prefix,
-    EncryptionError, EncryptionProvider, Result,
+    EncryptionError, EncryptionProvider, Result, add_encryption_prefix, has_encryption_prefix,
+    remove_encryption_prefix,
 };
-use base64::{engine::general_purpose, Engine as _};
 use zeroize::Zeroize;
 
 /// Dummy XOR encryption implementation.
@@ -38,9 +38,7 @@ impl DummyEncryption {
     ///
     /// The instance must be initialized using `init()` before use.
     pub fn new() -> Self {
-        Self {
-            key: Vec::new(),
-        }
+        Self { key: Vec::new() }
     }
 
     /// Encrypt or decrypt data using XOR cipher.

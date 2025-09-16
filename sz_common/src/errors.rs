@@ -22,7 +22,7 @@ pub enum EncryptionError {
         /// The number of bytes required for the operation
         required: usize,
         /// The number of bytes available in the provided buffer
-        available: usize
+        available: usize,
     },
 
     /// Invalid input data was provided.
@@ -32,7 +32,7 @@ pub enum EncryptionError {
     #[error("Invalid input: {message}")]
     InvalidInput {
         /// Detailed description of the input validation failure
-        message: String
+        message: String,
     },
 
     /// Encryption operation failed.
@@ -42,7 +42,7 @@ pub enum EncryptionError {
     #[error("Encryption failed: {message}")]
     EncryptionFailed {
         /// Detailed description of the encryption failure
-        message: String
+        message: String,
     },
 
     /// Decryption operation failed.
@@ -52,7 +52,7 @@ pub enum EncryptionError {
     #[error("Decryption failed: {message}")]
     DecryptionFailed {
         /// Detailed description of the decryption failure
-        message: String
+        message: String,
     },
 
     /// Plugin has not been properly initialized.
@@ -69,7 +69,7 @@ pub enum EncryptionError {
     #[error("Invalid signature: {signature}")]
     InvalidSignature {
         /// The signature that failed validation
-        signature: String
+        signature: String,
     },
 
     /// Internal plugin error.
@@ -79,7 +79,7 @@ pub enum EncryptionError {
     #[error("Internal error: {message}")]
     Internal {
         /// Detailed description of the internal error
-        message: String
+        message: String,
     },
 }
 
