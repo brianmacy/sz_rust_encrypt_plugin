@@ -1,7 +1,0 @@
-Complete Rust 2024 compliance and clippy fixes
-
-- Add comprehensive safety documentation to all C interface functions
-- Implement Default trait for AesEncryption and DummyEncryption structs
-- Update deprecated repeat().take() to repeat_n() for Rust 2024
-- Ensure all code passes cargo fmt and clippy with zero warnings
-- Maintain full test coverage and functionality
