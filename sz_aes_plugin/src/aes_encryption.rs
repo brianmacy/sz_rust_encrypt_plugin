@@ -8,7 +8,6 @@ use aes::Aes256;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use base64::{Engine as _, engine::general_purpose};
 use cbc::{Decryptor, Encryptor};
-use rand::RngCore;
 use sz_common::{
     EncryptionError, EncryptionProvider, Result, add_encryption_prefix, has_encryption_prefix,
     remove_encryption_prefix,
@@ -35,6 +34,12 @@ pub struct AesEncryption {
     deterministic_iv: [u8; AES_IV_SIZE],
 }
 
+impl Default for AesEncryption {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AesEncryption {
     /// Create a new AES encryption instance.
     ///
@@ -50,7 +55,7 @@ impl AesEncryption {
     fn pad_pkcs7(data: &[u8], block_size: usize) -> Vec<u8> {
         let padding_len = block_size - (data.len() % block_size);
         let mut padded = data.to_vec();
-        padded.extend(std::iter::repeat(padding_len as u8).take(padding_len));
+        padded.extend(std::iter::repeat_n(padding_len as u8, padding_len));
         padded
     }
 
@@ -195,10 +200,8 @@ impl EncryptionProvider for AesEncryption {
     }
 
     fn encrypt(&self, plaintext: &str) -> Result<String> {
-        // Generate random IV for non-deterministic encryption
-        let mut iv = [0u8; AES_IV_SIZE];
-        rand::thread_rng().fill_bytes(&mut iv);
-        self.encrypt_with_iv(plaintext, &iv)
+        // For example purposes, just use deterministic encryption
+        self.encrypt_deterministic(plaintext)
     }
 
     fn encrypt_deterministic(&self, plaintext: &str) -> Result<String> {
@@ -273,10 +276,10 @@ mod tests {
         let ciphertext1 = encryption.encrypt(plaintext).unwrap();
         let ciphertext2 = encryption.encrypt(plaintext).unwrap();
 
-        // Should be different due to random IVs
-        assert_ne!(ciphertext1, ciphertext2);
+        // For example plugins, both methods use deterministic encryption
+        assert_eq!(ciphertext1, ciphertext2);
 
-        // But both should decrypt to the same plaintext
+        // Both should decrypt to the same plaintext
         let decrypted1 = encryption.decrypt(&ciphertext1).unwrap();
         let decrypted2 = encryption.decrypt(&ciphertext2).unwrap();
         assert_eq!(plaintext, decrypted1);

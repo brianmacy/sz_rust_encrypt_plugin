@@ -67,6 +67,15 @@ pub unsafe extern "C" fn G2Encryption_InitPlugin(
 }
 
 /// Close the Dummy encryption plugin
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers passed from C
+/// - Assumes pointers are valid for the duration of the call
+/// - Requires proper C ABI calling convention
+///
+/// Callers must ensure all pointer parameters are valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn G2Encryption_ClosePlugin(
     error_buffer: *mut libc::c_char,
@@ -96,6 +105,15 @@ pub unsafe extern "C" fn G2Encryption_ClosePlugin(
 }
 
 /// Get the Dummy encryption signature
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers passed from C
+/// - Assumes pointers are valid for the duration of the call
+/// - Requires proper C ABI calling convention
+///
+/// Callers must ensure all pointer parameters are valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn G2Encryption_GetSignature(
     signature_buffer: *mut libc::c_char,
@@ -124,6 +142,15 @@ pub unsafe extern "C" fn G2Encryption_GetSignature(
 }
 
 /// Validate signature compatibility
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers passed from C
+/// - Assumes pointers are valid for the duration of the call
+/// - Requires proper C ABI calling convention
+///
+/// Callers must ensure all pointer parameters are valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn G2Encryption_ValidateSignatureCompatibility(
     signature_to_validate: *const libc::c_char,
@@ -144,6 +171,15 @@ pub unsafe extern "C" fn G2Encryption_ValidateSignatureCompatibility(
 }
 
 /// Encrypt a data field
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers passed from C
+/// - Assumes pointers are valid for the duration of the call
+/// - Requires proper C ABI calling convention
+///
+/// Callers must ensure all pointer parameters are valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn G2Encryption_EncryptDataField(
     input: *const libc::c_char,
@@ -168,6 +204,15 @@ pub unsafe extern "C" fn G2Encryption_EncryptDataField(
 }
 
 /// Decrypt a data field
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers passed from C
+/// - Assumes pointers are valid for the duration of the call
+/// - Requires proper C ABI calling convention
+///
+/// Callers must ensure all pointer parameters are valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn G2Encryption_DecryptDataField(
     input: *const libc::c_char,
@@ -192,6 +237,15 @@ pub unsafe extern "C" fn G2Encryption_DecryptDataField(
 }
 
 /// Encrypt a data field (deterministic)
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers passed from C
+/// - Assumes pointers are valid for the duration of the call
+/// - Requires proper C ABI calling convention
+///
+/// Callers must ensure all pointer parameters are valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn G2Encryption_EncryptDataFieldDeterministic(
     input: *const libc::c_char,
@@ -216,6 +270,15 @@ pub unsafe extern "C" fn G2Encryption_EncryptDataFieldDeterministic(
 }
 
 /// Decrypt a data field (deterministic)
+///
+/// # Safety
+///
+/// This function is unsafe because it:
+/// - Dereferences raw pointers passed from C
+/// - Assumes pointers are valid for the duration of the call
+/// - Requires proper C ABI calling convention
+///
+/// Callers must ensure all pointer parameters are valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn G2Encryption_DecryptDataFieldDeterministic(
     input: *const libc::c_char,

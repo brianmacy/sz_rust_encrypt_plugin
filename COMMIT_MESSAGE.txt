@@ -18,8 +18,8 @@ Generated libraries:
 - libsz_aes_encrypt_plugin.so (AES256_CBC_PKCS7_B64_2024)
 - libsz_dummy_encrypt_plugin.so (DUMMY_XOR_B64_2024)
 
-Security: AES plugin uses secure random IVs, automatic memory clearing,
-and proper PKCS#7 padding. Dummy plugin is for development/testing only.
+Security: AES plugin uses deterministic IVs for simplicity, automatic memory
+clearing, and proper PKCS#7 padding. Dummy plugin is for development/testing only.
 
 Technical implementation:
 - Rust 2024 edition with workspace dependencies
@@ -28,3 +28,4 @@ Technical implementation:
 - Thread-safe global state with Mutex
 - Comprehensive error handling with structured types
 - Full C interface compatibility for Senzing
+- Simplified example design: non-deterministic methods call deterministic methods

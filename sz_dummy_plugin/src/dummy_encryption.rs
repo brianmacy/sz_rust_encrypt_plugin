@@ -33,6 +33,12 @@ pub struct DummyEncryption {
     key: Vec<u8>,
 }
 
+impl Default for DummyEncryption {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DummyEncryption {
     /// Create a new dummy encryption instance.
     ///
@@ -74,6 +80,11 @@ impl EncryptionProvider for DummyEncryption {
     }
 
     fn encrypt(&self, plaintext: &str) -> Result<String> {
+        // For example purposes, just use deterministic encryption
+        self.encrypt_deterministic(plaintext)
+    }
+
+    fn encrypt_deterministic(&self, plaintext: &str) -> Result<String> {
         if plaintext.is_empty() {
             return Ok(add_encryption_prefix(""));
         }
@@ -84,12 +95,12 @@ impl EncryptionProvider for DummyEncryption {
         Ok(add_encryption_prefix(&encoded))
     }
 
-    fn encrypt_deterministic(&self, plaintext: &str) -> Result<String> {
-        // For XOR encryption, deterministic and regular encryption are the same
-        self.encrypt(plaintext)
+    fn decrypt(&self, ciphertext: &str) -> Result<String> {
+        // For example purposes, just use deterministic decryption
+        self.decrypt_deterministic(ciphertext)
     }
 
-    fn decrypt(&self, ciphertext: &str) -> Result<String> {
+    fn decrypt_deterministic(&self, ciphertext: &str) -> Result<String> {
         if !has_encryption_prefix(ciphertext) {
             return Err(EncryptionError::DecryptionFailed {
                 message: "Missing encryption prefix".to_string(),
@@ -113,11 +124,6 @@ impl EncryptionProvider for DummyEncryption {
         String::from_utf8(decrypted_bytes).map_err(|e| EncryptionError::DecryptionFailed {
             message: format!("UTF-8 decode error: {}", e),
         })
-    }
-
-    fn decrypt_deterministic(&self, ciphertext: &str) -> Result<String> {
-        // For XOR encryption, deterministic and regular decryption are the same
-        self.decrypt(ciphertext)
     }
 
     fn validate_signature(&self, signature: &str) -> Result<()> {
