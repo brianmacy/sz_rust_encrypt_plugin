@@ -1,0 +1,24 @@
+[package]
+name = "sz_aes_plugin"
+version = "0.1.0"
+edition = "2024"
+description = "AES-256-CBC encryption plugin for Senzing"
+
+[lib]
+name = "sz_aes_encrypt_plugin"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sz_common = { workspace = true }
+aes = { workspace = true }
+cbc = { workspace = true }
+rand = { workspace = true }
+base64 = { workspace = true }
+zeroize = { workspace = true }
+libc = { workspace = true }
+
+[build-dependencies]
+cbindgen = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

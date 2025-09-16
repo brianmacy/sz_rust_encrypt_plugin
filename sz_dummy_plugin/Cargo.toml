@@ -1,0 +1,21 @@
+[package]
+name = "sz_dummy_plugin"
+version = "0.1.0"
+edition = "2024"
+description = "Dummy XOR encryption plugin for Senzing (development/testing only)"
+
+[lib]
+name = "sz_dummy_encrypt_plugin"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sz_common = { workspace = true }
+base64 = { workspace = true }
+zeroize = { workspace = true }
+libc = { workspace = true }
+
+[build-dependencies]
+cbindgen = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }

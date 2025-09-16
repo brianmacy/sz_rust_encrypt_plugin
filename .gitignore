@@ -1,0 +1,23 @@
+# Rust build artifacts
+/target
+*/target
+Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated C headers are included for convenience
+# but could be regenerated
+# include/
+
+# Test binaries
+c_test
+aes_test
+dummy_test

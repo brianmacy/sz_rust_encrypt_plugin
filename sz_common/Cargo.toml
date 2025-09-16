@@ -1,0 +1,11 @@
+[package]
+name = "sz_common"
+version = "0.1.0"
+edition = "2024"
+description = "Common utilities and traits for Senzing encryption plugins"
+
+[dependencies]
+thiserror = { workspace = true }
+libc = { workspace = true }
+base64 = { workspace = true }
+zeroize = { workspace = true }
