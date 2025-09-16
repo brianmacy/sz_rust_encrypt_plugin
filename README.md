@@ -1,7 +1,7 @@
 # Senzing Rust Encryption Plugins
 
 [![Rust](https://img.shields.io/badge/rust-2024-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-example-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 A collection of Rust-based encryption plugins for Senzing, providing C-compatible shared libraries for data encryption and decryption.
 
@@ -315,5 +315,7 @@ All tests pass for the workspace:
 Total: **13 tests passing**
 
 ## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
 This project implements Senzing encryption plugin interfaces and is intended for use with Senzing products.
