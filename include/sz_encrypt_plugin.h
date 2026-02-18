@@ -1,6 +1,11 @@
-/* Senzing AES Encryption Plugin - Rust Implementation */
-#ifndef SZ_AES_ENCRYPT_PLUGIN_H
-#define SZ_AES_ENCRYPT_PLUGIN_H
+/* Senzing Encryption Plugin Interface - Rust Implementation
+ *
+ * Single shared header for all Senzing encryption plugins.
+ * All plugins export the same C interface; the specific algorithm
+ * is determined by which shared library is loaded at runtime.
+ */
+#ifndef SZ_ENCRYPT_PLUGIN_H
+#define SZ_ENCRYPT_PLUGIN_H
 
 #include <stddef.h>
 
@@ -86,4 +91,4 @@ int G2Encryption_DecryptDataFieldDeterministic(
 }
 #endif
 
-#endif /* SZ_AES_ENCRYPT_PLUGIN_H */
+#endif /* SZ_ENCRYPT_PLUGIN_H */

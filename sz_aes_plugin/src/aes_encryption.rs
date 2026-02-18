@@ -1,6 +1,6 @@
 //! AES-256-CBC encryption implementation for Senzing.
 //!
-//! This module provides a production-ready AES encryption implementation
+//! This module provides an AES encryption implementation
 //! with both deterministic and non-deterministic modes.
 
 use crate::AES_SIGNATURE;
@@ -10,7 +10,7 @@ use base64::{Engine as _, engine::general_purpose};
 use cbc::{Decryptor, Encryptor};
 use sz_common::{
     EncryptionError, EncryptionProvider, Result, add_encryption_prefix, has_encryption_prefix,
-    remove_encryption_prefix,
+    parse_hex_string, remove_encryption_prefix,
 };
 use zeroize::Zeroize;
 
@@ -49,6 +49,39 @@ impl AesEncryption {
             key: [0u8; AES_KEY_SIZE],
             deterministic_iv: [0u8; AES_IV_SIZE],
         }
+    }
+
+    /// Initialize with hex key and IV strings directly.
+    ///
+    /// This avoids `env::set_var` race conditions in tests.
+    /// Production code uses `init()` which reads environment variables.
+    #[cfg(test)]
+    pub fn init_with_key_iv(&mut self, key_hex: &str, iv_hex: &str) -> Result<()> {
+        let key_bytes = parse_hex_string(key_hex, "key")?;
+        if key_bytes.len() != AES_KEY_SIZE {
+            return Err(EncryptionError::InitializationFailed {
+                message: format!(
+                    "Key must be {} hex characters ({} bytes)",
+                    AES_KEY_SIZE * 2,
+                    AES_KEY_SIZE
+                ),
+            });
+        }
+        self.key.copy_from_slice(&key_bytes);
+
+        let iv_bytes = parse_hex_string(iv_hex, "iv")?;
+        if iv_bytes.len() != AES_IV_SIZE {
+            return Err(EncryptionError::InitializationFailed {
+                message: format!(
+                    "IV must be {} hex characters ({} bytes)",
+                    AES_IV_SIZE * 2,
+                    AES_IV_SIZE
+                ),
+            });
+        }
+        self.deterministic_iv.copy_from_slice(&iv_bytes);
+
+        Ok(())
     }
 
     /// Apply PKCS7 padding to data.
@@ -171,61 +204,39 @@ impl AesEncryption {
 
 impl EncryptionProvider for AesEncryption {
     fn init(&mut self) -> Result<()> {
-        // Read key from environment variable
         let key_hex =
             std::env::var("SZ_AES_KEY").map_err(|_| EncryptionError::InitializationFailed {
                 message: "SZ_AES_KEY environment variable not set".to_string(),
             })?;
 
-        if key_hex.len() != AES_KEY_SIZE * 2 {
+        let key_bytes = parse_hex_string(&key_hex, "SZ_AES_KEY")?;
+        if key_bytes.len() != AES_KEY_SIZE {
             return Err(EncryptionError::InitializationFailed {
                 message: format!(
-                    "SZ_AES_KEY must be {} hex characters (32 bytes)",
-                    AES_KEY_SIZE * 2
+                    "SZ_AES_KEY must be {} hex characters ({} bytes)",
+                    AES_KEY_SIZE * 2,
+                    AES_KEY_SIZE
                 ),
             });
         }
+        self.key.copy_from_slice(&key_bytes);
 
-        // Parse hex key
-        for (i, chunk) in key_hex.as_bytes().chunks(2).enumerate() {
-            let hex_str =
-                std::str::from_utf8(chunk).map_err(|_| EncryptionError::InitializationFailed {
-                    message: "Invalid hex characters in SZ_AES_KEY".to_string(),
-                })?;
-            self.key[i] = u8::from_str_radix(hex_str, 16).map_err(|_| {
-                EncryptionError::InitializationFailed {
-                    message: "Invalid hex characters in SZ_AES_KEY".to_string(),
-                }
-            })?;
-        }
-
-        // Read IV from environment variable
         let iv_hex =
             std::env::var("SZ_AES_IV").map_err(|_| EncryptionError::InitializationFailed {
                 message: "SZ_AES_IV environment variable not set".to_string(),
             })?;
 
-        if iv_hex.len() != AES_IV_SIZE * 2 {
+        let iv_bytes = parse_hex_string(&iv_hex, "SZ_AES_IV")?;
+        if iv_bytes.len() != AES_IV_SIZE {
             return Err(EncryptionError::InitializationFailed {
                 message: format!(
-                    "SZ_AES_IV must be {} hex characters (16 bytes)",
-                    AES_IV_SIZE * 2
+                    "SZ_AES_IV must be {} hex characters ({} bytes)",
+                    AES_IV_SIZE * 2,
+                    AES_IV_SIZE
                 ),
             });
         }
-
-        // Parse hex IV
-        for (i, chunk) in iv_hex.as_bytes().chunks(2).enumerate() {
-            let hex_str =
-                std::str::from_utf8(chunk).map_err(|_| EncryptionError::InitializationFailed {
-                    message: "Invalid hex characters in SZ_AES_IV".to_string(),
-                })?;
-            self.deterministic_iv[i] = u8::from_str_radix(hex_str, 16).map_err(|_| {
-                EncryptionError::InitializationFailed {
-                    message: "Invalid hex characters in SZ_AES_IV".to_string(),
-                }
-            })?;
-        }
+        self.deterministic_iv.copy_from_slice(&iv_bytes);
 
         Ok(())
     }
@@ -280,18 +291,18 @@ impl Drop for AesEncryption {
 mod tests {
     use super::*;
 
+    const TEST_KEY: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    const TEST_IV: &str = "0123456789abcdef0123456789abcdef";
+
+    fn make_encryption() -> AesEncryption {
+        let mut enc = AesEncryption::new();
+        enc.init_with_key_iv(TEST_KEY, TEST_IV).unwrap();
+        enc
+    }
+
     #[test]
     fn test_aes_encryption_roundtrip() {
-        unsafe {
-            std::env::set_var(
-                "SZ_AES_KEY",
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-            );
-            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
-        }
-
-        let mut encryption = AesEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let plaintext = "Hello, AES World!";
         let ciphertext = encryption.encrypt(plaintext).unwrap();
@@ -303,16 +314,7 @@ mod tests {
 
     #[test]
     fn test_aes_deterministic_encryption() {
-        unsafe {
-            std::env::set_var(
-                "SZ_AES_KEY",
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-            );
-            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
-        }
-
-        let mut encryption = AesEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let plaintext = "Deterministic AES test";
         let ciphertext1 = encryption.encrypt_deterministic(plaintext).unwrap();
@@ -326,16 +328,7 @@ mod tests {
 
     #[test]
     fn test_aes_non_deterministic_encryption() {
-        unsafe {
-            std::env::set_var(
-                "SZ_AES_KEY",
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-            );
-            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
-        }
-
-        let mut encryption = AesEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let plaintext = "Non-deterministic test";
         let ciphertext1 = encryption.encrypt(plaintext).unwrap();
@@ -353,16 +346,7 @@ mod tests {
 
     #[test]
     fn test_empty_string() {
-        unsafe {
-            std::env::set_var(
-                "SZ_AES_KEY",
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-            );
-            std::env::set_var("SZ_AES_IV", "0123456789abcdef0123456789abcdef");
-        }
-
-        let mut encryption = AesEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let ciphertext = encryption.encrypt("").unwrap();
         let decrypted = encryption.decrypt(&ciphertext).unwrap();

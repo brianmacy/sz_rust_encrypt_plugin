@@ -186,6 +186,7 @@ sz_common/
 ### Memory Safety
 
 All C interface functions handle:
+
 - Null pointer validation
 - Buffer size checking
 - UTF-8 validation
@@ -194,6 +195,7 @@ All C interface functions handle:
 ### Error Consistency
 
 Standardized error types ensure:
+
 - Consistent error reporting across plugins
 - No information leakage in error messages
 - Proper error codes for C interface
@@ -201,6 +203,7 @@ Standardized error types ensure:
 ### Thread Safety
 
 The trait requires `Send + Sync` ensuring:
+
 - Thread-safe implementations
 - Concurrent access support
 - Proper synchronization patterns

@@ -8,7 +8,7 @@ use crate::DUMMY_SIGNATURE;
 use base64::{Engine as _, engine::general_purpose};
 use sz_common::{
     EncryptionError, EncryptionProvider, Result, add_encryption_prefix, has_encryption_prefix,
-    remove_encryption_prefix,
+    parse_hex_string, remove_encryption_prefix,
 };
 use zeroize::Zeroize;
 
@@ -25,10 +25,10 @@ use zeroize::Zeroize;
 /// # Security
 ///
 /// This implementation provides:
-/// - ❌ No cryptographic security
-/// - ✅ Deterministic encryption (same input = same output)
-/// - ✅ Fast performance
-/// - ✅ Simple debugging
+/// - No cryptographic security
+/// - Deterministic encryption (same input = same output)
+/// - Fast performance
+/// - Simple debugging
 pub struct DummyEncryption {
     key: Vec<u8>,
 }
@@ -45,6 +45,16 @@ impl DummyEncryption {
     /// The instance must be initialized using `init()` before use.
     pub fn new() -> Self {
         Self { key: Vec::new() }
+    }
+
+    /// Initialize with a hex key string directly.
+    ///
+    /// This avoids `env::set_var` race conditions in tests.
+    /// Production code uses `init()` which reads environment variables.
+    #[cfg(test)]
+    pub fn init_with_key(&mut self, key_hex: &str) -> Result<()> {
+        self.key = parse_hex_string(key_hex, "key")?;
+        Ok(())
     }
 
     /// Encrypt or decrypt data using XOR cipher.
@@ -64,39 +74,12 @@ impl DummyEncryption {
 
 impl EncryptionProvider for DummyEncryption {
     fn init(&mut self) -> Result<()> {
-        // Read key from environment variable
         let key_hex =
             std::env::var("SZ_DUMMY_KEY").map_err(|_| EncryptionError::InitializationFailed {
                 message: "SZ_DUMMY_KEY environment variable not set".to_string(),
             })?;
 
-        if key_hex.is_empty() {
-            return Err(EncryptionError::InitializationFailed {
-                message: "SZ_DUMMY_KEY cannot be empty".to_string(),
-            });
-        }
-
-        if key_hex.len() % 2 != 0 {
-            return Err(EncryptionError::InitializationFailed {
-                message: "SZ_DUMMY_KEY must have even number of hex characters".to_string(),
-            });
-        }
-
-        // Parse hex key
-        self.key.clear();
-        for chunk in key_hex.as_bytes().chunks(2) {
-            let hex_str =
-                std::str::from_utf8(chunk).map_err(|_| EncryptionError::InitializationFailed {
-                    message: "Invalid hex characters in SZ_DUMMY_KEY".to_string(),
-                })?;
-            let byte = u8::from_str_radix(hex_str, 16).map_err(|_| {
-                EncryptionError::InitializationFailed {
-                    message: "Invalid hex characters in SZ_DUMMY_KEY".to_string(),
-                }
-            })?;
-            self.key.push(byte);
-        }
-
+        self.key = parse_hex_string(&key_hex, "SZ_DUMMY_KEY")?;
         Ok(())
     }
 
@@ -178,14 +161,17 @@ impl Drop for DummyEncryption {
 mod tests {
     use super::*;
 
+    const TEST_KEY: &str = "44554d4d595f584f525f763130";
+
+    fn make_encryption() -> DummyEncryption {
+        let mut enc = DummyEncryption::new();
+        enc.init_with_key(TEST_KEY).unwrap();
+        enc
+    }
+
     #[test]
     fn test_dummy_encryption_roundtrip() {
-        unsafe {
-            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
-        }
-
-        let mut encryption = DummyEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let plaintext = "Hello, World!";
         let ciphertext = encryption.encrypt(plaintext).unwrap();
@@ -197,12 +183,7 @@ mod tests {
 
     #[test]
     fn test_dummy_encryption_deterministic() {
-        unsafe {
-            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
-        }
-
-        let mut encryption = DummyEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let plaintext = "Deterministic test";
         let ciphertext1 = encryption.encrypt_deterministic(plaintext).unwrap();
@@ -216,12 +197,7 @@ mod tests {
 
     #[test]
     fn test_regular_and_deterministic_same() {
-        unsafe {
-            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
-        }
-
-        let mut encryption = DummyEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let plaintext = "Test data";
         let regular_encrypted = encryption.encrypt(plaintext).unwrap();
@@ -233,12 +209,7 @@ mod tests {
 
     #[test]
     fn test_empty_string() {
-        unsafe {
-            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
-        }
-
-        let mut encryption = DummyEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let ciphertext = encryption.encrypt("").unwrap();
         let decrypted = encryption.decrypt(&ciphertext).unwrap();
@@ -248,12 +219,7 @@ mod tests {
 
     #[test]
     fn test_invalid_ciphertext() {
-        unsafe {
-            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
-        }
-
-        let mut encryption = DummyEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let result = encryption.decrypt("invalid_data");
         assert!(result.is_err());
@@ -269,12 +235,7 @@ mod tests {
 
     #[test]
     fn test_unicode_support() {
-        unsafe {
-            std::env::set_var("SZ_DUMMY_KEY", "44554d4d595f584f525f763130");
-        }
-
-        let mut encryption = DummyEncryption::new();
-        encryption.init().unwrap();
+        let encryption = make_encryption();
 
         let plaintext = "Hello 世界 🌍 café";
         let ciphertext = encryption.encrypt(plaintext).unwrap();

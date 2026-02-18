@@ -1,389 +1,309 @@
 # Senzing Rust Encryption Plugins
 
-[![Rust](https://img.shields.io/badge/rust-2024-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+Rust implementations of the Senzing encryption plugin interface. Each plugin compiles to a C-compatible shared library (`.so`) that Senzing loads at runtime via `dlopen`. Two plugins are included: an AES-256-CBC plugin for real encryption and a dummy XOR plugin for development. Both serve as reference implementations for writing your own.
 
-A collection of Rust-based encryption plugins for Senzing, providing C-compatible shared libraries for data encryption and decryption.
+## Quick Start
 
-## Architecture
-
-This workspace contains three separate libraries:
-
-- **`sz_common`** - Shared utilities, traits, and error handling
-- **`sz_aes_plugin`** - AES-256-CBC encryption plugin
-- **`sz_dummy_plugin`** - Dummy XOR encryption plugin (for development/testing)
-
-## Features
-
-### Common Library (`sz_common`)
-
-Provides shared components used by all encryption plugins:
-
-- `EncryptionProvider` trait defining the standard interface
-- `EncryptionError` type for comprehensive error handling
-- C FFI utility functions for string and error buffer management
-- Memory-safe string conversion functions
-
-### AES Plugin (`sz_aes_plugin`)
-
-AES-256-CBC encryption using environment-configured keys:
-
-- **Environment configuration**: Key and IV from `SZ_AES_KEY` and `SZ_AES_IV`
-- **Deterministic encryption**: Uses configured IV for consistent results
-- **Base64 encoding**: All encrypted output is base64-encoded
-- **Memory safety**: Automatic zeroization of sensitive data
-- **Thread safety**: Global state management with proper synchronization
-
-Generated library: `libsz_aes_encrypt_plugin.so`
-
-### Dummy Plugin (`sz_dummy_plugin`)
-
-Simple XOR-based encryption for development and testing:
-
-- **Environment configuration**: Key from `SZ_DUMMY_KEY`
-- **XOR cipher**: Uses configured key for encryption
-- **Deterministic**: Same input always produces same output
-- **Base64 encoding**: Consistent with AES plugin output format
-- **Development only**: Not suitable for security purposes
-
-Generated library: `libsz_dummy_encrypt_plugin.so`
-
-## Building
-
-### Prerequisites
-
-- Rust 2024 edition or later
-- Standard development tools (build-essential on Ubuntu/Debian)
-
-### Build All Libraries
+### Build
 
 ```bash
-# Build all libraries in release mode
 cargo build --release --workspace
-
-# Build specific library
-cargo build --release -p sz_aes_plugin
-cargo build --release -p sz_dummy_plugin
 ```
 
-### Generated Files
+Output: `target/release/libsz_aes_encrypt_plugin.so` and `target/release/libsz_dummy_encrypt_plugin.so`
 
-After building, shared libraries are available in `target/release/`:
+### Configure Environment
 
-- `libsz_aes_encrypt_plugin.so` - AES encryption plugin
-- `libsz_dummy_encrypt_plugin.so` - Dummy encryption plugin
-
-C header files are generated in each plugin's `include/` directory:
-
-- `sz_aes_plugin/include/sz_aes_encrypt_plugin.h`
-- `sz_dummy_plugin/include/sz_dummy_encrypt_plugin.h`
-
-## Configuration
-
-Both plugins require environment variables for operation:
-
-### AES Plugin Environment Variables
+AES plugin:
 
 ```bash
 export SZ_AES_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"  # 64 hex chars (32 bytes)
 export SZ_AES_IV="0123456789abcdef0123456789abcdef"                                    # 32 hex chars (16 bytes)
 ```
 
-### Dummy Plugin Environment Variables
+Dummy plugin:
 
 ```bash
-export SZ_DUMMY_KEY="44554d4d595f584f525f763130"  # Any even number of hex chars
+export SZ_DUMMY_KEY="44554d4d595f584f525f763130"  # any even number of hex chars
 ```
 
-## Testing
+### Configure Senzing
 
-### Rust Tests
+Point Senzing at the plugin library and ensure it can find it:
 
 ```bash
-# Set environment variables first
-export SZ_AES_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-export SZ_AES_IV="0123456789abcdef0123456789abcdef"
-export SZ_DUMMY_KEY="44554d4d595f584f525f763130"
+export LD_LIBRARY_PATH=/path/to/target/release:$LD_LIBRARY_PATH
+```
 
-# Run all tests
+### Test
+
+```bash
 cargo test --workspace
-
-# Test specific library
-cargo test -p sz_aes_plugin
-cargo test -p sz_dummy_plugin
-cargo test -p sz_common
 ```
 
-### C Integration Tests
+No environment variables needed — tests use direct initialization to avoid `env::set_var` race conditions.
 
-```bash
-# Build C examples with CMake
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . --parallel
+## Implementing Your Own Plugin
 
-# Run tests (environment variables set automatically)
-./bin/test_aes
-./bin/test_dummy
+The dummy plugin (`sz_dummy_plugin`) is the simplest reference. Use it as your starting point. A plugin consists of three things:
+
+1. A struct that implements `EncryptionProvider`
+2. A one-line macro invocation that generates the C FFI
+3. A `Cargo.toml` that builds a `cdylib`
+
+### Step 1: Create the Crate
+
+```
+sz_my_plugin/
+├── Cargo.toml
+└── src/
+    ├── lib.rs
+    ├── my_encryption.rs
+    └── c_interface.rs
 ```
 
-## C Interface
+Add to root `Cargo.toml`:
 
-Both plugins implement the same C interface required by Senzing:
-
-```c
-// Plugin lifecycle
-int G2Encryption_InitPlugin(const void* config_params, char* error_buffer,
-                           const size_t max_error_size, size_t* error_size);
-int G2Encryption_ClosePlugin(char* error_buffer, const size_t max_error_size,
-                            size_t* error_size);
-
-// Plugin identification
-int G2Encryption_GetSignature(char* signature_buffer, const size_t max_signature_size,
-                             size_t* signature_size, char* error_buffer,
-                             const size_t max_error_size, size_t* error_size);
-int G2Encryption_ValidateSignatureCompatibility(const char* signature_to_validate,
-                                               const size_t signature_to_validate_size,
-                                               char* error_buffer, const size_t max_error_size,
-                                               size_t* error_size);
-
-// Encryption operations
-int G2Encryption_EncryptDataField(const char* input, const size_t input_size,
-                                 char* result_buffer, const size_t max_result_size,
-                                 size_t* result_size, char* error_buffer,
-                                 const size_t max_error_size, size_t* error_size);
-int G2Encryption_DecryptDataField(const char* input, const size_t input_size,
-                                 char* result_buffer, const size_t max_result_size,
-                                 size_t* result_size, char* error_buffer,
-                                 const size_t max_error_size, size_t* error_size);
-
-// Deterministic encryption operations
-int G2Encryption_EncryptDataFieldDeterministic(const char* input, const size_t input_size,
-                                              char* result_buffer, const size_t max_result_size,
-                                              size_t* result_size, char* error_buffer,
-                                              const size_t max_error_size, size_t* error_size);
-int G2Encryption_DecryptDataFieldDeterministic(const char* input, const size_t input_size,
-                                              char* result_buffer, const size_t max_result_size,
-                                              size_t* result_size, char* error_buffer,
-                                              const size_t max_error_size, size_t* error_size);
+```toml
+[workspace]
+members = [
+    "sz_common",
+    "sz_my_plugin",
+]
 ```
 
-## Usage Example
+Your `Cargo.toml`:
 
-### C Integration
+```toml
+[package]
+name = "sz_my_plugin"
+version = "0.1.0"
+edition = "2024"
 
-```c
-#include "sz_aes_encrypt_plugin.h" // or sz_dummy_encrypt_plugin.h
-#include <stdio.h>
-#include <string.h>
+[lib]
+name = "sz_my_encrypt_plugin"
+crate-type = ["cdylib", "rlib"]  # cdylib = shared library for C, rlib = for Rust tests
 
-int main() {
-    char error_buffer[1024];
-    size_t error_size = 0;
+[dependencies]
+sz_common = { workspace = true }
+libc = { workspace = true }
+zeroize = { workspace = true }
+# ... your crypto dependencies
+```
 
-    // Initialize the plugin
-    int result = G2Encryption_InitPlugin(
-        NULL,  // Configuration parameters (unused)
-        error_buffer, sizeof(error_buffer), &error_size
-    );
+### Step 2: Implement `EncryptionProvider`
 
-    if (result != 0) {
-        printf("Initialization failed: %.*s\n", (int)error_size, error_buffer);
-        return 1;
+The trait (`sz_common::traits`) defines the contract Senzing expects:
+
+| Method                                     | Purpose                                                                 |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| `init(&mut self)`                          | Read configuration (typically env vars), set up keys. Called once.      |
+| `close(&mut self)`                         | Zeroize keys and release resources. Called once.                        |
+| `signature(&self)`                         | Return a static string identifying your algorithm (e.g. `"MY_ALG_v1"`). |
+| `validate_signature(&self, sig)`           | Return `Ok(())` if `sig` matches your signature, else error.            |
+| `encrypt(&self, plaintext)`                | Non-deterministic encryption (random IV each call).                     |
+| `encrypt_deterministic(&self, plaintext)`  | Same plaintext always produces same ciphertext.                         |
+| `decrypt(&self, ciphertext)`               | Reverse of `encrypt`.                                                   |
+| `decrypt_deterministic(&self, ciphertext)` | Reverse of `encrypt_deterministic`.                                     |
+
+Your struct must also implement `Default` (the macro uses it to construct instances).
+
+Minimal example (see `sz_dummy_plugin/src/dummy_encryption.rs` for the full version):
+
+```rust
+use sz_common::{EncryptionProvider, EncryptionError, Result, parse_hex_string};
+use zeroize::Zeroize;
+
+pub struct MyEncryption {
+    key: Vec<u8>,
+}
+
+impl Default for MyEncryption {
+    fn default() -> Self { Self { key: Vec::new() } }
+}
+
+impl EncryptionProvider for MyEncryption {
+    fn init(&mut self) -> Result<()> {
+        let key_hex = std::env::var("MY_KEY")
+            .map_err(|_| EncryptionError::InitializationFailed {
+                message: "MY_KEY environment variable not set".to_string(),
+            })?;
+        self.key = parse_hex_string(&key_hex, "MY_KEY")?;
+        Ok(())
     }
 
-    // Encrypt data
-    const char* plaintext = "Hello, Senzing!";
-    char encrypted_buffer[2048];
-    size_t encrypted_size = 0;
-
-    result = G2Encryption_EncryptDataField(
-        plaintext, strlen(plaintext) + 1,
-        encrypted_buffer, sizeof(encrypted_buffer), &encrypted_size,
-        error_buffer, sizeof(error_buffer), &error_size
-    );
-
-    if (result == 0) {
-        printf("Encrypted: %.*s\n", (int)encrypted_size - 1, encrypted_buffer);
+    fn close(&mut self) -> Result<()> {
+        self.key.zeroize();
+        Ok(())
     }
 
-    // Clean up
-    G2Encryption_ClosePlugin(error_buffer, sizeof(error_buffer), &error_size);
-    return 0;
+    fn signature(&self) -> &'static str { "MY_ALG_v1" }
+
+    fn validate_signature(&self, sig: &str) -> Result<()> {
+        if sig == self.signature() { Ok(()) }
+        else { Err(EncryptionError::InvalidSignature { signature: sig.to_string() }) }
+    }
+
+    fn encrypt(&self, plaintext: &str) -> Result<String> { todo!() }
+    fn encrypt_deterministic(&self, plaintext: &str) -> Result<String> { todo!() }
+    fn decrypt(&self, ciphertext: &str) -> Result<String> { todo!() }
+    fn decrypt_deterministic(&self, ciphertext: &str) -> Result<String> { todo!() }
+}
+
+impl Drop for MyEncryption {
+    fn drop(&mut self) { self.key.zeroize(); }
 }
 ```
 
-### Building C Examples
+Key rules:
 
-Use CMake for building C examples:
+- All encrypted output should be prefixed with `ENC:` (use `sz_common::add_encryption_prefix`)
+- Decrypt must handle the `ENC:` prefix (use `sz_common::remove_encryption_prefix`)
+- Use `sz_common::parse_hex_string` for hex key parsing instead of rolling your own
+- Implement `Drop` to zeroize key material
 
-```bash
-# Configure and build
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . --parallel
+### Step 3: Generate the C Interface
 
-# Run examples
-./bin/test_aes
-./bin/test_dummy
+`c_interface.rs` — this is the entire file:
+
+```rust
+use crate::my_encryption::MyEncryption;
+
+sz_common::declare_c_interface!(MyEncryption);
 ```
 
-Or manually with GCC:
+The macro generates all 8 `extern "C"` functions that Senzing expects (`G2Encryption_InitPlugin`, `G2Encryption_ClosePlugin`, etc.). It handles:
 
-```bash
-# Set environment variables first
-export SZ_AES_KEY="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-export SZ_AES_IV="0123456789abcdef0123456789abcdef"
-export SZ_DUMMY_KEY="44554d4d595f584f525f763130"
+- Global singleton state via `OnceLock<Mutex<Option<T>>>`
+- Thread-safe access via `Mutex`
+- C string conversion and error buffer population
+- Mapping `EncryptionError` variants to C error codes
 
-# Build Rust libraries
-cargo build --release --workspace
+### Step 4: Wire Up `lib.rs`
 
-# For AES plugin
-gcc -o examples/test_aes examples/test_aes_plugin.c -L./target/release -lsz_aes_encrypt_plugin -Wl,-rpath,./target/release
-./examples/test_aes
+```rust
+mod c_interface;
+mod my_encryption;
 
-# For Dummy plugin
-gcc -o examples/test_dummy examples/test_dummy_plugin.c -L./target/release -lsz_dummy_encrypt_plugin -Wl,-rpath,./target/release
-./examples/test_dummy
+pub use c_interface::*;
+pub use my_encryption::MyEncryption;
+pub use sz_common::{EncryptionError, EncryptionProvider, Result};
+
+pub const MY_SIGNATURE: &str = "MY_ALG_v1";
 ```
 
-## Plugin Signatures
+### Step 5: Test Without Environment Variables
 
-- **AES Plugin**: `"AES256_CBC_PKCS7_B64_2024"`
-- **Dummy Plugin**: `"DUMMY_XOR_B64_2024"`
+Add an `init_with_key` method gated behind `#[cfg(test)]` so tests don't need `env::set_var`:
 
-## Security Considerations
+```rust
+#[cfg(test)]
+pub fn init_with_key(&mut self, key_hex: &str) -> Result<()> {
+    self.key = parse_hex_string(key_hex, "key")?;
+    Ok(())
+}
+```
 
-### AES Plugin
-- Uses cryptographically secure random number generation for IVs
-- Implements PKCS#7 padding for AES-CBC mode
-- Automatically zeroizes sensitive data from memory
-- Suitable for production use
+Build and verify:
 
-### Dummy Plugin
-- **WARNING**: Uses simple XOR cipher - NOT cryptographically secure
-- Intended for development, testing, and educational purposes only
-- Do not use in production environments
+```bash
+cargo build --release -p sz_my_plugin
+cargo test -p sz_my_plugin
+```
 
-## Dependencies
+## Architecture
 
-Core dependencies managed at workspace level:
+Three layers, each with a single responsibility:
 
-- `aes` - AES encryption implementation
-- `cbc` - CBC mode of operation
-- `rand` - Cryptographically secure random number generation
-- `base64` - Base64 encoding/decoding
-- `zeroize` - Secure memory clearing
-- `thiserror` - Error handling
-- `libc` - C library bindings
+```
+┌─────────────────────────────────────────────────┐
+│  sz_common                                      │
+│  ├── EncryptionProvider trait (the contract)     │
+│  ├── declare_c_interface! macro (C FFI glue)    │
+│  ├── EncryptionError (error types + C codes)    │
+│  └── utils (hex parsing, string conversion)     │
+└─────────────────────────────────────────────────┘
+          ▲                        ▲
+          │ implements trait        │ invokes macro
+┌─────────┴──────────┐  ┌─────────┴──────────┐
+│  sz_aes_plugin     │  │  sz_dummy_plugin   │
+│  AesEncryption     │  │  DummyEncryption   │
+│  (AES-256-CBC)     │  │  (XOR cipher)      │
+└────────────────────┘  └────────────────────┘
+```
 
-## Development
+Each plugin compiles to an independent `.so` with no runtime dependency on the other.
 
 ### Project Structure
 
 ```
 sz_rust_encrypt_plugin/
-├── Cargo.toml                    # Workspace configuration
-├── sz_common/                    # Shared utilities library
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs               # Common library exports
-│       ├── errors.rs            # Error types and handling
-│       ├── traits.rs            # EncryptionProvider trait
-│       └── utils.rs             # C FFI utilities
-├── sz_aes_plugin/               # AES encryption plugin
-│   ├── Cargo.toml
-│   ├── build.rs                 # Header generation
-│   ├── include/                 # Generated C headers
-│   └── src/
-│       ├── lib.rs               # Plugin entry point
-│       ├── aes_encryption.rs    # AES implementation
-│       └── c_interface.rs       # C FFI wrapper
-├── sz_dummy_plugin/             # Dummy encryption plugin
-│   ├── Cargo.toml
-│   ├── build.rs                 # Header generation
-│   ├── include/                 # Generated C headers
-│   └── src/
-│       ├── lib.rs               # Plugin entry point
-│       ├── dummy_encryption.rs  # XOR implementation
-│       └── c_interface.rs       # C FFI wrapper
-├── examples/                    # C integration tests
-│   ├── CMakeLists.txt          # Standalone CMake build
-│   ├── test_aes_plugin.c       # AES plugin test program
-│   └── test_dummy_plugin.c     # Dummy plugin test program
-├── build/                       # CMake build directory
-├── CMakeLists.txt              # Main CMake configuration
-├── LICENSE                     # Apache 2.0 license
-└── README.md                   # This file
+├── Cargo.toml                    # Workspace root
+├── deny.toml                     # License policy
+├── include/
+│   └── sz_encrypt_plugin.h       # Shared C header (all plugins export the same interface)
+├── sz_common/src/
+│   ├── traits.rs                 # EncryptionProvider trait
+│   ├── c_interface_macro.rs      # declare_c_interface! macro
+│   ├── errors.rs                 # EncryptionError + C error codes
+│   └── utils.rs                  # parse_hex_string, C string helpers
+├── sz_aes_plugin/src/
+│   ├── aes_encryption.rs         # AES-256-CBC implementation
+│   └── c_interface.rs            # One-line macro invocation
+├── sz_dummy_plugin/src/
+│   ├── dummy_encryption.rs       # XOR implementation
+│   └── c_interface.rs            # One-line macro invocation
+├── examples/
+│   ├── test_aes_plugin.c         # C integration test
+│   └── test_dummy_plugin.c       # C integration test
+└── CMakeLists.txt                # Builds C examples against the .so files
 ```
 
-### Adding New Plugins
+## Reference
 
-1. Create new directory in workspace
-2. Add to `workspace.members` in root `Cargo.toml`
-3. Implement `EncryptionProvider` trait from `sz_common`
-4. Create C interface wrapper functions
-5. Add build script for header generation
+### C Interface
 
-### Code Style
+All plugins export the same 8 functions. See `include/sz_encrypt_plugin.h` for the full declarations.
 
-- Use Rust 2024 edition features
-- Follow workspace dependency management
-- Implement comprehensive error handling
-- Include thorough unit tests
-- Document all public interfaces
+| Function                                      | Purpose                        |
+| --------------------------------------------- | ------------------------------ |
+| `G2Encryption_InitPlugin`                     | Initialize plugin, read config |
+| `G2Encryption_ClosePlugin`                    | Clean up and release resources |
+| `G2Encryption_GetSignature`                   | Return algorithm identifier    |
+| `G2Encryption_ValidateSignatureCompatibility` | Check if a signature is ours   |
+| `G2Encryption_EncryptDataField`               | Non-deterministic encrypt      |
+| `G2Encryption_DecryptDataField`               | Decrypt                        |
+| `G2Encryption_EncryptDataFieldDeterministic`  | Deterministic encrypt          |
+| `G2Encryption_DecryptDataFieldDeterministic`  | Deterministic decrypt          |
 
-## Integration with Senzing
+Return value: `0` on success, negative error code on failure.
 
-### Configuration
+### Error Codes
 
-Add the specific plugin to your Senzing configuration:
+| Code | Meaning               |
+| ---- | --------------------- |
+| 0    | Success               |
+| -1   | Buffer too small      |
+| -2   | Invalid input         |
+| -3   | Encryption failed     |
+| -4   | Decryption failed     |
+| -5   | Initialization failed |
+| -6   | Not initialized       |
+| -7   | Invalid signature     |
+| -99  | Internal error        |
 
-```json
-{
-  "DATA_ENCRYPTION": {
-    "ENCRYPTION_PLUGIN_NAME": "libsz_aes_encrypt_plugin.so"
-  }
-}
-```
+### Plugin Signatures
 
-### Environment Setup
+| Plugin | Signature         | Environment Variables     |
+| ------ | ----------------- | ------------------------- |
+| AES    | `AES256_CBC_v1.0` | `SZ_AES_KEY`, `SZ_AES_IV` |
+| Dummy  | `DUMMY_XOR_v1.0`  | `SZ_DUMMY_KEY`            |
 
-Ensure the shared library is accessible:
+### Security Notes
 
-```bash
-# Add to library path
-export LD_LIBRARY_PATH=/path/to/plugin:$LD_LIBRARY_PATH
-
-# Or install to system library directory
-sudo cp target/release/libsz_aes_encrypt_plugin.so /usr/local/lib/
-sudo ldconfig
-```
-
-## Performance Characteristics
-
-| Operation | AES Plugin | Dummy Plugin |
-|-----------|------------|--------------|
-| Plugin Init | <1ms | <1ms |
-| Encrypt (1KB) | <1ms | <0.1ms |
-| Decrypt (1KB) | <1ms | <0.1ms |
-| Throughput | ~100MB/s | ~1GB/s |
-
-*Performance varies by hardware and data size*
-
-## Testing Results
-
-All tests pass for the workspace:
-
-- **sz_common**: 1 test (doctest)
-- **sz_aes_plugin**: 5 tests (encryption, deterministic, validation)
-- **sz_dummy_plugin**: 7 tests (encryption, deterministic, unicode, validation)
-
-Total: **13 tests passing**
+- **AES plugin**: AES-256-CBC with PKCS#7 padding. Key material is zeroized on close and drop. The included implementation uses a fixed IV for both deterministic and non-deterministic modes (delegates `encrypt` to `encrypt_deterministic`) — a real deployment should use random IVs for non-deterministic mode.
+- **Dummy plugin**: XOR cipher. Not cryptographically secure. Use only for development and testing.
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
-
-This project implements Senzing encryption plugin interfaces and is intended for use with Senzing products.
+Apache-2.0. See [LICENSE](LICENSE).

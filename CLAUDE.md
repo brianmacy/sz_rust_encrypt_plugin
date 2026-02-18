@@ -42,11 +42,13 @@ cargo build --release
 ## Project Setup Guidelines
 
 ### Cargo.toml Configuration
+
 - Use Rust 2024 edition when creating Cargo.toml
 - Include appropriate encryption-related dependencies (e.g., `ring`, `aes`, `chacha20poly1305`)
 - Add development dependencies for testing (e.g., `proptest` for property-based testing)
 
 ### Code Architecture Considerations
+
 - Implement secure encryption/decryption interfaces
 - Use strong typing for keys, nonces, and encrypted data
 - Implement proper error handling for cryptographic operations
@@ -54,6 +56,7 @@ cargo build --release
 - Design for thread safety if the plugin will be used in concurrent contexts
 
 ### Security Best Practices
+
 - Never log or expose encryption keys or sensitive data
 - Use constant-time operations for cryptographic comparisons
 - Implement proper key derivation functions
@@ -61,6 +64,7 @@ cargo build --release
 - Clear sensitive data from memory when possible (consider using zeroize crate)
 
 ### Testing Strategy
+
 - Unit tests for all cryptographic functions
 - Property-based tests for encryption/decryption round-trips
 - Integration tests for plugin interfaces
@@ -68,6 +72,7 @@ cargo build --release
 - Test vector validation against known standards
 
 ### Dependencies to Consider
+
 - `ring` or `rustcrypto` ecosystem for cryptographic primitives
 - `zeroize` for secure memory clearing
 - `serde` for serialization if needed

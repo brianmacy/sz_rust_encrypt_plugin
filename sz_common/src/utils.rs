@@ -1,5 +1,34 @@
 use crate::errors::{EncryptionError, Result};
 
+/// Parse a hex string into a `Vec<u8>`.
+///
+/// `var_name` is included in error messages to identify which value failed.
+pub fn parse_hex_string(hex: &str, var_name: &str) -> Result<Vec<u8>> {
+    if hex.is_empty() {
+        return Err(EncryptionError::InitializationFailed {
+            message: format!("{var_name} cannot be empty"),
+        });
+    }
+    if hex.len() % 2 != 0 {
+        return Err(EncryptionError::InitializationFailed {
+            message: format!("{var_name} must have even number of hex characters"),
+        });
+    }
+
+    hex.as_bytes()
+        .chunks(2)
+        .map(|chunk| {
+            let hex_str =
+                std::str::from_utf8(chunk).map_err(|_| EncryptionError::InitializationFailed {
+                    message: format!("Invalid hex characters in {var_name}"),
+                })?;
+            u8::from_str_radix(hex_str, 16).map_err(|_| EncryptionError::InitializationFailed {
+                message: format!("Invalid hex characters in {var_name}"),
+            })
+        })
+        .collect()
+}
+
 pub const ENCRYPTION_PREFIX: &str = "ENC:";
 pub const SIGNATURE_DUMMY: &str = "DUMMY_XOR_v1.0";
 pub const SIGNATURE_AES: &str = "AES256_CBC_v1.0";

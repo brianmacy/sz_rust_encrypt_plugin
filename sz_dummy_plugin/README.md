@@ -148,6 +148,7 @@ gcc -o dummy_test your_program.c -L../target/release -lsz_dummy_encrypt_plugin -
 ### Deterministic Nature
 
 Since XOR is deterministic and uses the same key every time:
+
 - Same plaintext always produces same ciphertext
 - Useful for testing and debugging
 - Enables pattern analysis (which is why it's insecure)
@@ -233,14 +234,14 @@ This implementation demonstrates:
 
 ## Comparison with AES Plugin
 
-| Feature | Dummy Plugin | AES Plugin |
-|---------|-------------|------------|
-| Security | None | High |
-| Speed | Very Fast | Fast |
-| Deterministic | Always | Optional |
-| Key Management | None | Required |
-| Use Case | Development | Production |
-| Algorithm | XOR | AES-256-CBC |
+| Feature        | Dummy Plugin | AES Plugin  |
+| -------------- | ------------ | ----------- |
+| Security       | None         | High        |
+| Speed          | Very Fast    | Fast        |
+| Deterministic  | Always       | Optional    |
+| Key Management | None         | Required    |
+| Use Case       | Development  | Production  |
+| Algorithm      | XOR          | AES-256-CBC |
 
 ## License
 

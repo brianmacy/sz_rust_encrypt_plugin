@@ -2,6 +2,8 @@
 name = "sz_aes_plugin"
 version = "0.1.0"
 edition = "2024"
+license.workspace = true
+rust-version.workspace = true
 description = "AES-256-CBC encryption plugin for Senzing"
 
 [lib]
@@ -15,9 +17,6 @@ cbc = { workspace = true }
 base64 = { workspace = true }
 zeroize = { workspace = true }
 libc = { workspace = true }
-
-[build-dependencies]
-cbindgen = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

@@ -3,6 +3,7 @@
 //! This library provides common traits, utilities, and error types shared
 //! across all Senzing encryption plugin implementations.
 
+pub mod c_interface_macro;
 pub mod errors;
 pub mod traits;
 pub mod utils;

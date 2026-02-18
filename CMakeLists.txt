@@ -34,6 +34,9 @@ add_custom_target(rust_plugins
 # Find required libraries (if any)
 # Currently we only need standard C libraries
 
+# Shared header for all plugins
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
 # AES Plugin Test Executable
 add_executable(test_aes
     examples/test_aes_plugin.c
