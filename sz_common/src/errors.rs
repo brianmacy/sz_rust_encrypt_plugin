@@ -93,33 +93,32 @@ pub enum EncryptionError {
     },
 }
 
+/// Error codes from the Senzing encryption plugin specification.
+/// See: <https://github.com/Senzing/senzing-data-encryption-specification/blob/main/src/interface/g2EncryptionPluginInterface_defs.h>
+pub const G2_ENCRYPTION_PLUGIN_SUCCESS: i64 = 0;
+pub const G2_ENCRYPTION_PLUGIN_SIMPLE_ERROR: i64 = -1;
+pub const G2_ENCRYPTION_PLUGIN_OUTPUT_BUFFER_SIZE_ERROR: i64 = -5;
+pub const G2_ENCRYPTION_PLUGIN_CRITICAL_ERROR: i64 = -20;
+pub const G2_ENCRYPTION_PLUGIN_FAILED_SIGNATURE_VALIDATION: i64 = -30;
+
 impl EncryptionError {
-    /// Convert the error to a C-compatible error code.
+    /// Convert the error to a Senzing-spec C error code (`int64_t`).
     ///
-    /// These error codes are returned by the C interface functions to
-    /// indicate the type of error that occurred. Negative values indicate
-    /// errors, with 0 indicating success.
-    ///
-    /// # Error Code Mapping
-    ///
-    /// - `-1`: Buffer too small
-    /// - `-2`: Invalid input
-    /// - `-3`: Encryption failed
-    /// - `-4`: Decryption failed
-    /// - `-5`: Initialization failed
-    /// - `-6`: Plugin not initialized
-    /// - `-7`: Invalid signature
-    /// - `-99`: Internal error
-    pub fn to_error_code(&self) -> i32 {
+    /// Maps internal error variants to the codes defined in
+    /// `g2EncryptionPluginInterface_defs.h`.
+    pub fn to_error_code(&self) -> i64 {
         match self {
-            EncryptionError::BufferTooSmall { .. } => -1,
-            EncryptionError::InvalidInput { .. } => -2,
-            EncryptionError::EncryptionFailed { .. } => -3,
-            EncryptionError::DecryptionFailed { .. } => -4,
-            EncryptionError::InitializationFailed { .. } => -5,
-            EncryptionError::NotInitialized => -6,
-            EncryptionError::InvalidSignature { .. } => -7,
-            EncryptionError::Internal { .. } => -99,
+            EncryptionError::BufferTooSmall { .. } => G2_ENCRYPTION_PLUGIN_OUTPUT_BUFFER_SIZE_ERROR,
+            EncryptionError::InvalidSignature { .. } => {
+                G2_ENCRYPTION_PLUGIN_FAILED_SIGNATURE_VALIDATION
+            }
+            EncryptionError::NotInitialized | EncryptionError::Internal { .. } => {
+                G2_ENCRYPTION_PLUGIN_CRITICAL_ERROR
+            }
+            EncryptionError::InvalidInput { .. }
+            | EncryptionError::EncryptionFailed { .. }
+            | EncryptionError::DecryptionFailed { .. }
+            | EncryptionError::InitializationFailed { .. } => G2_ENCRYPTION_PLUGIN_SIMPLE_ERROR,
         }
     }
 }

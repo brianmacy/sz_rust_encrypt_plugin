@@ -4,6 +4,20 @@
 //! This macro generates all of them from a single invocation, eliminating
 //! ~300 lines of duplicated boilerplate per plugin.
 
+/// FFI-compatible parameter tuple matching `CParameterTuple` from the Senzing spec.
+#[repr(C)]
+pub struct CParameterTuple {
+    pub param_name: *const libc::c_char,
+    pub param_value: *const libc::c_char,
+}
+
+/// FFI-compatible parameter list matching `CParameterList` from the Senzing spec.
+#[repr(C)]
+pub struct CParameterList {
+    pub param_tuples: *const CParameterTuple,
+    pub num_parameters: libc::size_t,
+}
+
 /// Generate the complete C FFI interface for an encryption plugin.
 ///
 /// The supplied type must implement `EncryptionProvider + Default`.
@@ -57,11 +71,11 @@ macro_rules! declare_c_interface {
         /// - Strings are properly null-terminated
         #[unsafe(no_mangle)]
         pub unsafe extern "C" fn G2Encryption_InitPlugin(
-            _config_params: *const libc::c_void,
+            _config_params: *const $crate::c_interface_macro::CParameterList,
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = (|| -> Result<(), EncryptionError> {
                 let mut encryption = <$encryption_type>::default();
                 encryption.init()?;
@@ -94,7 +108,7 @@ macro_rules! declare_c_interface {
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = (|| -> Result<(), EncryptionError> {
                 let mut encryption_lock =
                     get_encryption()
@@ -131,7 +145,7 @@ macro_rules! declare_c_interface {
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = with_encryption(|encryption| {
                 let signature = encryption.signature();
                 unsafe {
@@ -163,7 +177,7 @@ macro_rules! declare_c_interface {
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = (|| -> Result<(), EncryptionError> {
                 let signature = c_str_to_string(signature_to_validate, signature_to_validate_size)?;
                 with_encryption(|encryption| encryption.validate_signature(&signature))
@@ -191,7 +205,7 @@ macro_rules! declare_c_interface {
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = (|| -> Result<(), EncryptionError> {
                 let plaintext = c_str_to_string(input, input_size)?;
                 let encrypted = with_encryption(|encryption| encryption.encrypt(&plaintext))?;
@@ -222,7 +236,7 @@ macro_rules! declare_c_interface {
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = (|| -> Result<(), EncryptionError> {
                 let ciphertext = c_str_to_string(input, input_size)?;
                 let decrypted = with_encryption(|encryption| encryption.decrypt(&ciphertext))?;
@@ -253,7 +267,7 @@ macro_rules! declare_c_interface {
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = (|| -> Result<(), EncryptionError> {
                 let plaintext = c_str_to_string(input, input_size)?;
                 let encrypted =
@@ -285,7 +299,7 @@ macro_rules! declare_c_interface {
             error_buffer: *mut libc::c_char,
             max_error_size: libc::size_t,
             error_size: *mut libc::size_t,
-        ) -> libc::c_int {
+        ) -> i64 {
             let result = (|| -> Result<(), EncryptionError> {
                 let ciphertext = c_str_to_string(input, input_size)?;
                 let decrypted =

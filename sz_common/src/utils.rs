@@ -114,7 +114,7 @@ pub unsafe fn error_to_c_buffer(
     error_buffer: *mut libc::c_char,
     max_error_size: usize,
     error_size: *mut usize,
-) -> i32 {
+) -> i64 {
     let error_code = error.to_error_code();
     let error_message = error.to_string();
 

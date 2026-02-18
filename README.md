@@ -276,21 +276,19 @@ All plugins export the same 8 functions. See `include/sz_encrypt_plugin.h` for t
 | `G2Encryption_EncryptDataFieldDeterministic`  | Deterministic encrypt          |
 | `G2Encryption_DecryptDataFieldDeterministic`  | Deterministic decrypt          |
 
-Return value: `0` on success, negative error code on failure.
+All functions return `int64_t`: `0` on success, negative error code on failure.
 
 ### Error Codes
 
-| Code | Meaning               |
-| ---- | --------------------- |
-| 0    | Success               |
-| -1   | Buffer too small      |
-| -2   | Invalid input         |
-| -3   | Encryption failed     |
-| -4   | Decryption failed     |
-| -5   | Initialization failed |
-| -6   | Not initialized       |
-| -7   | Invalid signature     |
-| -99  | Internal error        |
+Per the [Senzing encryption plugin spec](https://github.com/Senzing/senzing-data-encryption-specification/blob/main/src/interface/g2EncryptionPluginInterface_defs.h):
+
+| Code | Constant                                             | Meaning                               |
+| ---- | ---------------------------------------------------- | ------------------------------------- |
+| 0    | `G2_ENCRYPTION_PLUGIN___SUCCESS`                     | Success                               |
+| -1   | `G2_ENCRYPTION_PLUGIN___SIMPLE_ERROR`                | Recoverable error                     |
+| -5   | `G2_ENCRYPTION_PLUGIN___OUTPUT_BUFFER_SIZE_ERROR`    | Output buffer too small               |
+| -20  | `G2_ENCRYPTION_PLUGIN___CRITICAL_ERROR`              | Critical error (e.g. not initialized) |
+| -30  | `G2_ENCRYPTION_PLUGIN___FAILED_SIGNATURE_VALIDATION` | Signature mismatch                    |
 
 ### Plugin Signatures
 

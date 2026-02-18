@@ -15,6 +15,12 @@ All notable changes to this project will be documented in this file.
 - GitHub Actions security workflow (cargo-audit, cargo-deny license check, weekly schedule)
 - `CHANGELOG.md`
 
+### Fixed
+
+- Error codes now match the Senzing encryption plugin spec (0, -1, -5, -20, -30)
+- Return type changed from `int`/`i32` to `int64_t`/`i64` per spec
+- `InitPlugin` first parameter changed from `void*` to `const struct CParameterList*` per spec
+
 ### Changed
 
 - Updated `thiserror` from 1.x to 2.x
