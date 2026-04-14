@@ -5,7 +5,7 @@
 
 use crate::AES_SIGNATURE;
 use aes::Aes256;
-use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::cipher::{BlockModeDecrypt, BlockModeEncrypt, KeyIvInit};
 use base64::{Engine as _, engine::general_purpose};
 use cbc::{Decryptor, Encryptor};
 use sz_common::{
@@ -134,7 +134,7 @@ impl AesEncryption {
         let encryptor = Aes256CbcEnc::new(&self.key.into(), iv.into());
         let mut encrypted = padded_data.clone();
         encryptor
-            .encrypt_padded_mut::<cbc::cipher::block_padding::NoPadding>(
+            .encrypt_padded::<cbc::cipher::block_padding::NoPadding>(
                 &mut encrypted,
                 padded_data.len(),
             )
@@ -189,7 +189,7 @@ impl AesEncryption {
         let mut decrypted = encrypted_bytes.to_vec();
 
         decryptor
-            .decrypt_padded_mut::<cbc::cipher::block_padding::NoPadding>(&mut decrypted)
+            .decrypt_padded::<cbc::cipher::block_padding::NoPadding>(&mut decrypted)
             .map_err(|e| EncryptionError::DecryptionFailed {
                 message: format!("AES decryption failed: {:?}", e),
             })?;
