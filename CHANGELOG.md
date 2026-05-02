@@ -44,6 +44,14 @@ All notable changes to this project will be documented in this file.
 - Added `build/` and `COMMIT_MESSAGE.txt` to `.gitignore`
 - Updated `CMakeLists.txt` to reference shared header location
 - Rewrote README for two audiences: plugin users and plugin implementors
+- AES plugin docs now honestly describe the reference implementation:
+  both `encrypt()` and `encrypt_deterministic()` use the same fixed IV
+  configured at init time (the spec's non-deterministic / deterministic
+  split is collapsed). Updated top-level `README.md`, `sz_aes_plugin/README.md`,
+  module/struct doc in `sz_aes_plugin/src/aes_encryption.rs` and `lib.rs`,
+  and renamed `test_aes_non_deterministic_encryption` to
+  `test_aes_encrypt_collapses_to_deterministic` to pin the actual behavior.
+  No code/behavior change; documentation only.
 
 ### Removed
 

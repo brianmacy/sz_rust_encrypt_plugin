@@ -1,7 +1,9 @@
 //! # Senzing AES Encryption Plugin
 //!
-//! A production-ready AES-256-CBC encryption plugin for Senzing that provides
-//! both deterministic and non-deterministic encryption modes.
+//! Reference AES-256-CBC encryption plugin for Senzing. Both `encrypt()` and
+//! `encrypt_deterministic()` use the same fixed IV configured at init time —
+//! see `aes_encryption::AesEncryption` for the security trade-off and what a
+//! production-quality plugin would do differently.
 
 mod aes_encryption;
 mod c_interface;

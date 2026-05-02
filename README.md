@@ -1,6 +1,6 @@
 # Senzing Rust Encryption Plugins
 
-Rust implementations of the Senzing encryption plugin interface. Each plugin compiles to a C-compatible shared library (`.so`) that Senzing loads at runtime via `dlopen`. Two plugins are included: an AES-256-CBC plugin for real encryption and a dummy XOR plugin for development. Both serve as reference implementations for writing your own.
+Rust implementations of the Senzing encryption plugin interface. Each plugin compiles to a C-compatible shared library (`.so`) that Senzing loads at runtime via `dlopen`. Two plugins are included: an AES-256-CBC reference plugin (deterministic — fixed IV in both modes) and a dummy XOR plugin for development. Both serve as reference implementations for writing your own — see [Security caveats](#security-caveats) before deploying either to production.
 
 ## Quick Start
 
@@ -37,7 +37,7 @@ export SZ_DUMMY_KEY=""
 This is intended for test fixtures where you want the encryption pipeline
 exercised end-to-end without transforming on-disk bytes — e.g. mirroring a
 cleartext-style reference plugin where corpus expected values are plaintext.
-The env var must be *set but empty*; unset still errors out so the operator
+The env var must be _set but empty_; unset still errors out so the operator
 can't accidentally no-op the plugin by forgetting to configure it.
 
 ### Configure Senzing
@@ -310,7 +310,7 @@ Per the [Senzing encryption plugin spec](https://github.com/Senzing/senzing-data
 | AES    | `AES256_CBC_v1.0` | `SZ_AES_KEY`, `SZ_AES_IV` |
 | Dummy  | `DUMMY_XOR_v1.0`  | `SZ_DUMMY_KEY`            |
 
-### Security Notes
+### Security caveats
 
 - **AES plugin**: AES-256-CBC with PKCS#7 padding. Key material is zeroized on close and drop. The included implementation uses a fixed IV for both deterministic and non-deterministic modes (delegates `encrypt` to `encrypt_deterministic`) — a real deployment should use random IVs for non-deterministic mode.
 - **Dummy plugin**: XOR cipher. Not cryptographically secure. Use only for development and testing.

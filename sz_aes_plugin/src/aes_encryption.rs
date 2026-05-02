@@ -1,7 +1,9 @@
 //! AES-256-CBC encryption implementation for Senzing.
 //!
-//! This module provides an AES encryption implementation
-//! with both deterministic and non-deterministic modes.
+//! Reference plugin. Both `encrypt()` and `encrypt_deterministic()` use the
+//! same fixed IV configured at init time — the spec's non-deterministic /
+//! deterministic split is collapsed. See `AesEncryption` struct doc for the
+//! security implications.
 
 use crate::AES_SIGNATURE;
 use aes::Aes256;
@@ -21,14 +23,27 @@ const AES_KEY_SIZE: usize = 32; // 256 bits
 const AES_IV_SIZE: usize = 16; // 128 bits
 const AES_BLOCK_SIZE: usize = 16;
 
-/// AES-256-CBC encryption implementation.
+/// AES-256-CBC encryption implementation (reference / example plugin).
 ///
-/// This implementation provides secure AES encryption with:
-/// - 256-bit keys for maximum security
-/// - CBC mode with PKCS7 padding
-/// - Random IVs for non-deterministic encryption
-/// - Fixed IVs for deterministic encryption
-/// - Automatic memory clearing of sensitive data
+/// This implementation provides:
+/// - 256-bit keys
+/// - CBC mode with manual PKCS7 padding
+/// - **A single fixed IV used for both `encrypt()` and
+///   `encrypt_deterministic()`** — the spec separates non-deterministic and
+///   deterministic encryption, but this plugin collapses them. Identical
+///   plaintexts always produce identical ciphertexts. The IV is still
+///   prepended to the ciphertext (so decryption can recover it from on-disk
+///   bytes), but the IV is the same on every call.
+/// - Automatic memory clearing of sensitive data via `zeroize`
+///
+/// # Security
+///
+/// Reusing a fixed IV across multiple AES-CBC encryptions leaks pattern
+/// information: identical plaintext blocks produce identical ciphertext
+/// blocks. **This plugin is intended as a reference / starting point for
+/// writing your own encryption plugin, not as a production cipher.** A
+/// production AES plugin should generate a fresh random IV inside `encrypt()`
+/// and reserve the fixed IV exclusively for `encrypt_deterministic()`.
 pub struct AesEncryption {
     key: [u8; AES_KEY_SIZE],
     deterministic_iv: [u8; AES_IV_SIZE],
@@ -252,7 +267,9 @@ impl EncryptionProvider for AesEncryption {
     }
 
     fn encrypt(&self, plaintext: &str) -> Result<String> {
-        // For example purposes, just use deterministic encryption
+        // Reference plugin: spec allows a non-deterministic mode here but
+        // this implementation collapses both modes onto the deterministic
+        // (fixed-IV) path. See struct doc for the security trade-off.
         self.encrypt_deterministic(plaintext)
     }
 
@@ -327,17 +344,22 @@ mod tests {
     }
 
     #[test]
-    fn test_aes_non_deterministic_encryption() {
+    fn test_aes_encrypt_collapses_to_deterministic() {
+        // This reference plugin uses a fixed IV for both `encrypt()` and
+        // `encrypt_deterministic()` — see struct doc for the security
+        // implications. This test pins that behavior so a future change that
+        // promotes `encrypt()` to a real random-IV mode lights up here.
         let encryption = make_encryption();
 
         let plaintext = "Non-deterministic test";
         let ciphertext1 = encryption.encrypt(plaintext).unwrap();
         let ciphertext2 = encryption.encrypt(plaintext).unwrap();
+        assert_eq!(
+            ciphertext1, ciphertext2,
+            "encrypt() in this reference plugin is deterministic; if you've added a random IV \
+             this assertion is the right place to flip"
+        );
 
-        // For example plugins, both methods use deterministic encryption
-        assert_eq!(ciphertext1, ciphertext2);
-
-        // Both should decrypt to the same plaintext
         let decrypted1 = encryption.decrypt(&ciphertext1).unwrap();
         let decrypted2 = encryption.decrypt(&ciphertext2).unwrap();
         assert_eq!(plaintext, decrypted1);
