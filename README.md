@@ -27,6 +27,19 @@ Dummy plugin:
 export SZ_DUMMY_KEY="44554d4d595f584f525f763130"  # any even number of hex chars
 ```
 
+The dummy plugin also accepts an empty key for **passthrough mode** — XOR and
+base64 are skipped, output is `"ENC:" + plaintext` verbatim:
+
+```bash
+export SZ_DUMMY_KEY=""
+```
+
+This is intended for test fixtures where you want the encryption pipeline
+exercised end-to-end without transforming on-disk bytes — e.g. mirroring a
+cleartext-style reference plugin where corpus expected values are plaintext.
+The env var must be *set but empty*; unset still errors out so the operator
+can't accidentally no-op the plugin by forgetting to configure it.
+
 ### Configure Senzing
 
 Point Senzing at the plugin library and ensure it can find it:

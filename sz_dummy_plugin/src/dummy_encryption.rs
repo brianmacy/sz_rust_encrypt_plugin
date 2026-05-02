@@ -22,6 +22,21 @@ use zeroize::Zeroize;
 /// - Demonstrating plugin interfaces
 /// - Educational purposes
 ///
+/// # Operating modes
+///
+/// The plugin selects its mode at `init()` time based on `SZ_DUMMY_KEY`:
+///
+/// - **`SZ_DUMMY_KEY` set to an even-length hex string** — XOR cipher with
+///   that key, output is `"ENC:" + base64(XOR(plaintext, key))`. Standard
+///   reference behavior.
+/// - **`SZ_DUMMY_KEY` set to the empty string `""`** — *passthrough mode*: no
+///   XOR, no base64. Output is `"ENC:" + plaintext`. Useful for test fixtures
+///   where you want the plugin to be loaded and exercised end-to-end without
+///   transforming the on-disk bytes — e.g. mirroring a cleartext-style
+///   reference plugin where the corpus expected values are plaintext.
+/// - **`SZ_DUMMY_KEY` not set** — `init()` returns an error. The empty string
+///   is *set but empty*; the env var has to exist to opt into passthrough.
+///
 /// # Security
 ///
 /// This implementation provides:
@@ -51,9 +66,15 @@ impl DummyEncryption {
     ///
     /// This avoids `env::set_var` race conditions in tests.
     /// Production code uses `init()` which reads environment variables.
+    ///
+    /// Empty `key_hex` selects passthrough mode (see struct doc for details).
     #[cfg(test)]
     pub fn init_with_key(&mut self, key_hex: &str) -> Result<()> {
-        self.key = parse_hex_string(key_hex, "key")?;
+        self.key = if key_hex.is_empty() {
+            Vec::new()
+        } else {
+            parse_hex_string(key_hex, "key")?
+        };
         Ok(())
     }
 
@@ -79,7 +100,14 @@ impl EncryptionProvider for DummyEncryption {
                 message: "SZ_DUMMY_KEY environment variable not set".to_string(),
             })?;
 
-        self.key = parse_hex_string(&key_hex, "SZ_DUMMY_KEY")?;
+        // Empty value (env var set to "") selects passthrough mode — see struct doc.
+        // Unset (env::var error above) is still rejected so the plugin doesn't
+        // silently no-op when the operator forgot to configure it.
+        self.key = if key_hex.is_empty() {
+            Vec::new()
+        } else {
+            parse_hex_string(&key_hex, "SZ_DUMMY_KEY")?
+        };
         Ok(())
     }
 
@@ -99,6 +127,13 @@ impl EncryptionProvider for DummyEncryption {
     }
 
     fn encrypt_deterministic(&self, plaintext: &str) -> Result<String> {
+        // Passthrough mode: prefix only, no XOR, no base64. Output bytes are
+        // exactly `"ENC:" + plaintext` so callers see a verbatim plaintext
+        // payload behind a recognizable encryption marker.
+        if self.key.is_empty() {
+            return Ok(add_encryption_prefix(plaintext));
+        }
+
         if plaintext.is_empty() {
             return Ok(add_encryption_prefix(""));
         }
@@ -122,6 +157,11 @@ impl EncryptionProvider for DummyEncryption {
         }
 
         let encoded_data = remove_encryption_prefix(ciphertext)?;
+
+        // Passthrough mode: just strip the prefix; payload is plaintext.
+        if self.key.is_empty() {
+            return Ok(encoded_data.to_string());
+        }
 
         if encoded_data.is_empty() {
             return Ok(String::new());
@@ -242,5 +282,76 @@ mod tests {
         let decrypted = encryption.decrypt(&ciphertext).unwrap();
 
         assert_eq!(plaintext, decrypted);
+    }
+
+    fn make_passthrough_encryption() -> DummyEncryption {
+        let mut enc = DummyEncryption::new();
+        enc.init_with_key("").unwrap();
+        enc
+    }
+
+    #[test]
+    fn test_passthrough_no_xor_no_base64() {
+        let encryption = make_passthrough_encryption();
+        let ciphertext = encryption.encrypt("Hello, World!").unwrap();
+        // Verbatim plaintext behind the prefix — no XOR, no base64.
+        assert_eq!(ciphertext, "ENC:Hello, World!");
+    }
+
+    #[test]
+    fn test_passthrough_roundtrip() {
+        let encryption = make_passthrough_encryption();
+        let plaintext = "Hello, World!";
+        let ciphertext = encryption.encrypt(plaintext).unwrap();
+        let decrypted = encryption.decrypt(&ciphertext).unwrap();
+        assert_eq!(plaintext, decrypted);
+    }
+
+    #[test]
+    fn test_passthrough_empty_string() {
+        let encryption = make_passthrough_encryption();
+        let ciphertext = encryption.encrypt("").unwrap();
+        assert_eq!(ciphertext, "ENC:");
+        let decrypted = encryption.decrypt(&ciphertext).unwrap();
+        assert_eq!("", decrypted);
+    }
+
+    #[test]
+    fn test_passthrough_unicode() {
+        let encryption = make_passthrough_encryption();
+        let plaintext = "Hello 世界 🌍 café";
+        let ciphertext = encryption.encrypt(plaintext).unwrap();
+        assert_eq!(ciphertext, format!("ENC:{plaintext}"));
+        let decrypted = encryption.decrypt(&ciphertext).unwrap();
+        assert_eq!(plaintext, decrypted);
+    }
+
+    #[test]
+    fn test_passthrough_preserves_special_chars() {
+        // Bytes that base64 would otherwise transform — passthrough must not.
+        let encryption = make_passthrough_encryption();
+        let plaintext = "G2Enc:already-prefixed | comma,delimited | \"quoted\"";
+        let ciphertext = encryption.encrypt(plaintext).unwrap();
+        assert_eq!(ciphertext, format!("ENC:{plaintext}"));
+        let decrypted = encryption.decrypt(&ciphertext).unwrap();
+        assert_eq!(plaintext, decrypted);
+    }
+
+    #[test]
+    fn test_passthrough_decrypt_requires_prefix() {
+        let encryption = make_passthrough_encryption();
+        // Same prefix-validation contract as the XOR path.
+        assert!(encryption.decrypt("not_prefixed").is_err());
+    }
+
+    #[test]
+    fn test_xor_mode_still_xors_after_passthrough_added() {
+        // Regression: adding passthrough must not change XOR-mode output.
+        let encryption = make_encryption();
+        let plaintext = "data";
+        let ciphertext = encryption.encrypt(plaintext).unwrap();
+        // XOR mode: base64-encoded payload, never the verbatim plaintext.
+        assert!(ciphertext.starts_with("ENC:"));
+        assert_ne!(ciphertext, format!("ENC:{plaintext}"));
     }
 }

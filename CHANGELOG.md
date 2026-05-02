@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `sz_dummy_plugin` passthrough mode — `SZ_DUMMY_KEY=""` (set but empty)
+  selects no-XOR / no-base64 output: `"ENC:" + plaintext` verbatim. Lets test
+  fixtures whose corpus expected values are plaintext (e.g. a cleartext-style
+  reference) exercise the plugin end-to-end without transforming on-disk
+  bytes. Unset `SZ_DUMMY_KEY` still errors so the plugin can't be silently
+  no-op'd.
 - `declare_c_interface!` macro in `sz_common` — eliminates ~600 lines of duplicated C FFI boilerplate
 - `parse_hex_string()` utility in `sz_common` — shared hex parsing for all plugins
 - `init_with_key()`/`init_with_key_iv()` test helpers — avoids `unsafe { env::set_var() }` race conditions
