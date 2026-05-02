@@ -23,6 +23,13 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- `string_to_c_buffer` reported `actual_size = bytes.len() + 1`, including
+  the trailing null terminator in the byte count returned to the engine.
+  C++ reference plugins follow the spec and report `bytes.len()` (payload
+  only). Engine consumers reading `actual_size` bytes therefore stored
+  `<value>\0` rows on disk, mismatching SQL_TABLE comparisons against
+  C++ baselines and breaking any consumer that derived a string length
+  from this field. Affects every Rust plugin built on `sz_common`.
 - Error codes now match the Senzing encryption plugin spec (0, -1, -5, -20, -30)
 - Return type changed from `int`/`i32` to `int64_t`/`i64` per spec
 - `InitPlugin` first parameter changed from `void*` to `const struct CParameterList*` per spec

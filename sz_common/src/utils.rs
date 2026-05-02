@@ -82,22 +82,33 @@ pub unsafe fn string_to_c_buffer(
     }
 
     let bytes = s.as_bytes();
-    let required_size = bytes.len() + 1; // +1 for null terminator
-
-    unsafe {
-        *actual_size = required_size;
-    }
+    // Buffer must hold the data plus a trailing null terminator we always write
+    // for C-string callers; that's the size we check against `max_size`.
+    let required_size = bytes.len() + 1;
 
     if required_size > max_size {
+        // Spec: on OUTPUT_BUFFER_SIZE_ERROR the plugin's preamble already set
+        // `*actual_size = 0`; the success path is the only one that writes a
+        // payload length. Don't touch `*actual_size` here so we mirror the
+        // C++ macro POSTAMBLE behavior — the caller's retry loop expects to
+        // read back zero on the too-small path (see DataEncryptionLoader.cpp).
         return Err(EncryptionError::BufferTooSmall {
             required: required_size,
             available: max_size,
         });
     }
 
+    // Success path. `*actual_size` is the *data* length only — the trailing
+    // null we write past the payload is not counted. The Senzing plugin spec
+    // and the C++ reference (`g2EncryptDataClearText`: `*resultSize = inputSize`)
+    // both define it that way, and the consumer assigns exactly that many
+    // bytes (`output.assign(buffer.getBuffer(), resultSize)` in
+    // `DataEncryptionLoader::encrypt`). Reporting `bytes.len() + 1` historically
+    // leaked the trailing `\0` into every encrypted row on disk.
     unsafe {
         std::ptr::copy_nonoverlapping(bytes.as_ptr(), buffer as *mut u8, bytes.len());
         *((buffer as *mut u8).add(bytes.len())) = 0; // null terminator
+        *actual_size = bytes.len();
     }
 
     Ok(())
@@ -142,4 +153,100 @@ pub fn remove_encryption_prefix(data: &str) -> Result<&str> {
         });
     }
     Ok(&data[ENCRYPTION_PREFIX.len()..])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `actual_size` reports payload length only — the trailing null we write
+    /// for C-string callers is *not* counted. Reporting `len + 1` historically
+    /// caused the engine to read the null as data and store `<value>\0` rows
+    /// on disk, breaking SQL_TABLE comparisons against C++ reference plugins
+    /// that follow the spec.
+    #[test]
+    fn string_to_c_buffer_reports_data_length_only() {
+        let s = "hello";
+        let mut buf = [0u8; 16];
+        let mut size: usize = 0;
+        let rc = unsafe {
+            string_to_c_buffer(
+                s,
+                buf.as_mut_ptr() as *mut libc::c_char,
+                buf.len(),
+                &mut size,
+            )
+        };
+        assert!(rc.is_ok());
+        assert_eq!(
+            size, 5,
+            "actual_size must equal payload length, not buffer length"
+        );
+        assert_eq!(&buf[..5], b"hello");
+        assert_eq!(
+            buf[5], 0,
+            "buffer must still be null-terminated past the payload"
+        );
+    }
+
+    #[test]
+    fn string_to_c_buffer_empty_string() {
+        let mut buf = [0xFFu8; 4];
+        let mut size: usize = usize::MAX;
+        let rc = unsafe {
+            string_to_c_buffer(
+                "",
+                buf.as_mut_ptr() as *mut libc::c_char,
+                buf.len(),
+                &mut size,
+            )
+        };
+        assert!(rc.is_ok());
+        assert_eq!(size, 0);
+        assert_eq!(buf[0], 0, "empty payload still leaves a null at offset 0");
+    }
+
+    #[test]
+    fn string_to_c_buffer_buffer_too_small() {
+        // Need 5 + 1 = 6 bytes to hold "hello\0"; provide only 5.
+        let s = "hello";
+        let mut buf = [0u8; 5];
+        // Caller's preamble pattern (mirrors C++ POSTAMBLE): zero the size
+        // before the call, expect it to stay at zero on too-small.
+        let mut size: usize = 0;
+        let rc = unsafe {
+            string_to_c_buffer(
+                s,
+                buf.as_mut_ptr() as *mut libc::c_char,
+                buf.len(),
+                &mut size,
+            )
+        };
+        assert!(matches!(rc, Err(EncryptionError::BufferTooSmall { .. })));
+        assert_eq!(
+            size, 0,
+            "too-small path must not write *actual_size; caller's zero-init must survive"
+        );
+    }
+
+    #[test]
+    fn string_to_c_buffer_unicode() {
+        // 7 UTF-8 bytes for "héllo!" (é = 2 bytes), ensure size is byte length.
+        let s = "héllo!";
+        assert_eq!(s.len(), 7);
+        let mut buf = [0u8; 16];
+        let mut size: usize = 0;
+        let rc = unsafe {
+            string_to_c_buffer(
+                s,
+                buf.as_mut_ptr() as *mut libc::c_char,
+                buf.len(),
+                &mut size,
+            )
+        };
+        assert!(rc.is_ok());
+        assert_eq!(size, 7);
+        assert_eq!(&buf[..7], s.as_bytes());
+        assert_eq!(buf[7], 0);
+    }
 }
