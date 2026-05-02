@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-02
+
 ### Added
 
 - `sz_dummy_plugin` passthrough mode — `SZ_DUMMY_KEY=""` (set but empty)
