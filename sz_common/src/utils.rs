@@ -9,7 +9,7 @@ pub fn parse_hex_string(hex: &str, var_name: &str) -> Result<Vec<u8>> {
             message: format!("{var_name} cannot be empty"),
         });
     }
-    if hex.len() % 2 != 0 {
+    if hex.len() & 1 != 0 {
         return Err(EncryptionError::InitializationFailed {
             message: format!("{var_name} must have even number of hex characters"),
         });
