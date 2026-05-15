@@ -14,9 +14,105 @@ pub struct CParameterTuple {
 /// FFI-compatible parameter list matching `CParameterList` from the Senzing spec.
 #[repr(C)]
 pub struct CParameterList {
-    pub param_tuples: *const CParameterTuple,
+    pub param_tuples: *mut CParameterTuple,
     pub num_parameters: libc::size_t,
 }
+
+// Function pointer typedefs for dlsym casting.
+// cbindgen generates these as C `typedef ... (*Name)(...);` declarations.
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginInitPluginFuncPtr = Option<
+    unsafe extern "C" fn(
+        *const CParameterList,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+    ) -> i64,
+>;
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginClosePluginFuncPtr =
+    Option<unsafe extern "C" fn(*mut libc::c_char, libc::size_t, *mut libc::size_t) -> i64>;
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginGetSignatureFuncPtr = Option<
+    unsafe extern "C" fn(
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+    ) -> i64,
+>;
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginValidateSignatureCompatibilityFuncPtr = Option<
+    unsafe extern "C" fn(
+        *const libc::c_char,
+        libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+    ) -> i64,
+>;
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginEncryptDataFieldFuncPtr = Option<
+    unsafe extern "C" fn(
+        *const libc::c_char,
+        libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+    ) -> i64,
+>;
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginDecryptDataFieldFuncPtr = Option<
+    unsafe extern "C" fn(
+        *const libc::c_char,
+        libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+    ) -> i64,
+>;
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginEncryptDataFieldDeterministicFuncPtr = Option<
+    unsafe extern "C" fn(
+        *const libc::c_char,
+        libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+    ) -> i64,
+>;
+
+#[allow(non_camel_case_types)]
+pub type G2EncryptionPluginDecryptDataFieldDeterministicFuncPtr = Option<
+    unsafe extern "C" fn(
+        *const libc::c_char,
+        libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+        *mut libc::c_char,
+        libc::size_t,
+        *mut libc::size_t,
+    ) -> i64,
+>;
 
 /// Generate the complete C FFI interface for an encryption plugin.
 ///
@@ -315,6 +411,25 @@ macro_rules! declare_c_interface {
                     error_to_c_buffer(&e, error_buffer, max_error_size, error_size)
                 },
             }
+        }
+
+        // Compile-time check: each function's signature must match its typedef.
+        // If the macro-generated extern "C" function drifts from the type alias
+        // in c_interface_macro.rs, this block fails to compile.
+        #[allow(dead_code, unused_variables)]
+        fn _sz_assert_ffi_signatures() {
+            use $crate::c_interface_macro::*;
+            let _a: G2EncryptionPluginInitPluginFuncPtr = Some(G2Encryption_InitPlugin);
+            let _b: G2EncryptionPluginClosePluginFuncPtr = Some(G2Encryption_ClosePlugin);
+            let _c: G2EncryptionPluginGetSignatureFuncPtr = Some(G2Encryption_GetSignature);
+            let _d: G2EncryptionPluginValidateSignatureCompatibilityFuncPtr =
+                Some(G2Encryption_ValidateSignatureCompatibility);
+            let _e: G2EncryptionPluginEncryptDataFieldFuncPtr = Some(G2Encryption_EncryptDataField);
+            let _f: G2EncryptionPluginDecryptDataFieldFuncPtr = Some(G2Encryption_DecryptDataField);
+            let _g: G2EncryptionPluginEncryptDataFieldDeterministicFuncPtr =
+                Some(G2Encryption_EncryptDataFieldDeterministic);
+            let _h: G2EncryptionPluginDecryptDataFieldDeterministicFuncPtr =
+                Some(G2Encryption_DecryptDataFieldDeterministic);
         }
     };
 }

@@ -95,11 +95,11 @@ pub enum EncryptionError {
 
 /// Error codes from the Senzing encryption plugin specification.
 /// See: <https://github.com/Senzing/senzing-data-encryption-specification/blob/main/src/interface/g2EncryptionPluginInterface_defs.h>
-pub const G2_ENCRYPTION_PLUGIN_SUCCESS: i64 = 0;
-pub const G2_ENCRYPTION_PLUGIN_SIMPLE_ERROR: i64 = -1;
-pub const G2_ENCRYPTION_PLUGIN_OUTPUT_BUFFER_SIZE_ERROR: i64 = -5;
-pub const G2_ENCRYPTION_PLUGIN_CRITICAL_ERROR: i64 = -20;
-pub const G2_ENCRYPTION_PLUGIN_FAILED_SIGNATURE_VALIDATION: i64 = -30;
+pub const G2_ENCRYPTION_PLUGIN___SUCCESS: i64 = 0;
+pub const G2_ENCRYPTION_PLUGIN___SIMPLE_ERROR: i64 = -1;
+pub const G2_ENCRYPTION_PLUGIN___OUTPUT_BUFFER_SIZE_ERROR: i64 = -5;
+pub const G2_ENCRYPTION_PLUGIN___CRITICAL_ERROR: i64 = -20;
+pub const G2_ENCRYPTION_PLUGIN___FAILED_SIGNATURE_VALIDATION: i64 = -30;
 
 impl EncryptionError {
     /// Convert the error to a Senzing-spec C error code (`int64_t`).
@@ -108,17 +108,19 @@ impl EncryptionError {
     /// `g2EncryptionPluginInterface_defs.h`.
     pub fn to_error_code(&self) -> i64 {
         match self {
-            EncryptionError::BufferTooSmall { .. } => G2_ENCRYPTION_PLUGIN_OUTPUT_BUFFER_SIZE_ERROR,
+            EncryptionError::BufferTooSmall { .. } => {
+                G2_ENCRYPTION_PLUGIN___OUTPUT_BUFFER_SIZE_ERROR
+            }
             EncryptionError::InvalidSignature { .. } => {
-                G2_ENCRYPTION_PLUGIN_FAILED_SIGNATURE_VALIDATION
+                G2_ENCRYPTION_PLUGIN___FAILED_SIGNATURE_VALIDATION
             }
             EncryptionError::NotInitialized | EncryptionError::Internal { .. } => {
-                G2_ENCRYPTION_PLUGIN_CRITICAL_ERROR
+                G2_ENCRYPTION_PLUGIN___CRITICAL_ERROR
             }
             EncryptionError::InvalidInput { .. }
             | EncryptionError::EncryptionFailed { .. }
             | EncryptionError::DecryptionFailed { .. }
-            | EncryptionError::InitializationFailed { .. } => G2_ENCRYPTION_PLUGIN_SIMPLE_ERROR,
+            | EncryptionError::InitializationFailed { .. } => G2_ENCRYPTION_PLUGIN___SIMPLE_ERROR,
         }
     }
 }
