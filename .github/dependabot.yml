@@ -4,10 +4,6 @@
 # `cooldown.default-days: 21` delays routine *version* bumps for 21 days
 # after publication (protection against yanked/regressed/compromised
 # releases). Cooldown does NOT apply to *security* updates.
-#
-# `rebase-strategy: disabled` stops Dependabot re-rebasing open PRs every
-# time `main` advances, which otherwise re-fires CI repeatedly. Rebase a
-# PR on demand with `@dependabot rebase`.
 
 version: 2
 updates:
