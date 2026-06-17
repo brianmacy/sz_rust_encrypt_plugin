@@ -1,0 +1,33 @@
+name: Cargo audit
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  cargo-audit:
+    name: Cargo audit
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+
+      # Prebuilt binary (fast). Honors .cargo/audit.toml for ignored advisories.
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2.81.10
+        with:
+          tool: cargo-audit
+
+      - name: Run cargo-audit
+        run: cargo audit

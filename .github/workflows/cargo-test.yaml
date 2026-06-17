@@ -1,0 +1,35 @@
+name: Cargo test
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  cargo-test:
+    name: Cargo test
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      # --locked: fail if Cargo.lock would need updating.
+      - name: Run tests
+        run: cargo test --workspace --all-features --locked

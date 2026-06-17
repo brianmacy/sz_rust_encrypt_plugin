@@ -1,17 +1,64 @@
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+#
+# `cooldown.default-days: 21` delays routine *version* bumps for 21 days
+# after publication (protection against yanked/regressed/compromised
+# releases). Cooldown does NOT apply to *security* updates.
+#
+# `rebase-strategy: disabled` stops Dependabot re-rebasing open PRs every
+# time `main` advances, which otherwise re-fires CI repeatedly. Rebase a
+# PR on demand with `@dependabot rebase`.
+
 version: 2
 updates:
+  # Rust crate dependencies (Cargo.lock at the workspace root)
   - package-ecosystem: "cargo"
+    assignees:
+      - "brianmacy"
+    cooldown:
+      default-days: 21
     directory: "/"
+    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "rust"
+      - "security"
+    groups:
+      cargo-dependencies:
+        patterns:
+          - "*"
+
+  # GitHub Actions used by the workflows in .github/workflows/
+  - package-ecosystem: "github-actions"
+    assignees:
+      - "kernelsam"
     cooldown:
       default-days: 21
-  - package-ecosystem: "github-actions"
+      # First-party Senzing actions bypass the cooldown — they're our own
+      # releases, so their updates should land immediately rather than wait
+      # 21 days like third-party actions.
+      exclude:
+        - "senzing-factory/*"
     directory: "/"
+    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
-    cooldown:
-      default-days: 21
-
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "security"
+    groups:
+      # Grouped on its own so the cooldown-bypassed factory updates land as
+      # one immediate PR, separate from the cooled-down third-party actions.
+      senzing-factory:
+        patterns:
+          - "senzing-factory/*"
+      github-actions:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "senzing-factory/*"
