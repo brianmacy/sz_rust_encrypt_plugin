@@ -18,7 +18,6 @@ updates:
     cooldown:
       default-days: 21
     directory: "/"
-    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
@@ -43,7 +42,6 @@ updates:
       exclude:
         - "senzing-factory/*"
     directory: "/"
-    rebase-strategy: "disabled"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
