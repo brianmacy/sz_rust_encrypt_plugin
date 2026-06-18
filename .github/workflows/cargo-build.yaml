@@ -1,0 +1,45 @@
+name: Cargo build
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  cargo-build:
+    name: Cargo build (${{ matrix.label }})
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: default
+            flag: ""
+          - label: all-features
+            flag: "--all-features"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.label }}
+
+      # --locked: fail if Cargo.lock would need updating.
+      - name: Build
+        run: cargo build --workspace --locked ${{ matrix.flag }}

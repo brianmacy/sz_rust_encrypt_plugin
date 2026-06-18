@@ -1,0 +1,15 @@
+# Pinned Rust toolchain for the workspace.
+#
+# Why pin: GitHub Actions `ubuntu-latest` runners auto-upgrade their
+# preinstalled rustup stable channel, so an un-pinned project silently
+# picks up new clippy lints / `-D warnings` defaults the moment a Rust
+# point release ships — failing CI on code that was clean locally.
+# Pinning makes cargo/rustfmt/clippy install this exact version on first
+# use, so local and CI enforce the identical lint set.
+#
+# To bump: change `channel`, run `cargo clippy --workspace --all-targets`
+# locally to surface new lints, fix them, and push as its own commit.
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

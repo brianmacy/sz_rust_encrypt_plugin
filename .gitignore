@@ -4,6 +4,7 @@
 
 # IDE files
 .vscode/
+!.vscode/cspell.json
 .idea/
 *.swp
 *.swo

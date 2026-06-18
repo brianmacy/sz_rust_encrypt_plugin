@@ -1,0 +1,3 @@
+{
+  "ignore": ["**/*.rs", "**/*.md", "**/examples/**", "**/.github/workflows/**"]
+}

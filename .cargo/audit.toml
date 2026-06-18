@@ -1,0 +1,5 @@
+# cargo-audit configuration — honored by the cargo-audit.yaml workflow.
+# Only add advisory IDs to `ignore` with a documented justification and a
+# tracking issue, and only when no fixed version is yet available.
+[advisories]
+ignore = []

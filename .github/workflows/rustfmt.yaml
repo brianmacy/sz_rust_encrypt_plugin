@@ -1,0 +1,35 @@
+name: Rustfmt
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  rustfmt:
+    name: Rustfmt
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+
+      # rustup + the pinned toolchain (rust-toolchain.toml) are honored automatically.
+      - name: Add rustfmt component
+        run: rustup component add rustfmt
+
+      - name: Run rustfmt
+        run: cargo fmt --all --check
