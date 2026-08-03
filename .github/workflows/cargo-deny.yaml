@@ -19,10 +19,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
 
       # Reads deny.toml at the workspace root (advisories, licenses, bans, sources).
       - name: Run cargo-deny
-        uses: EmbarkStudios/cargo-deny-action@v2.0.20
+        uses: EmbarkStudios/cargo-deny-action@v2.1.1
