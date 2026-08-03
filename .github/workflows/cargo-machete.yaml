@@ -19,12 +19,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
 
       - name: Install cargo-machete
-        uses: taiki-e/install-action@v2.81.10
+        uses: taiki-e/install-action@v2.83.2
         with:
           tool: cargo-machete
 
