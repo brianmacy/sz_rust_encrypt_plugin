@@ -1,7 +1,8 @@
 rules:
-  secrets-outside-env:
-    disable: true
   unpinned-uses:
     config:
       policies:
-        "*": ref-pin
+        # Third-party actions MUST be pinned to a full commit SHA (immutable).
+        "*": hash-pin
+        # First-party reusables are consumed at the moving major tag by design.
+        "senzing-factory/*": ref-pin

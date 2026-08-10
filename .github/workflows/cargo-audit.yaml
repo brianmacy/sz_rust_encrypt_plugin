@@ -19,13 +19,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       # Prebuilt binary (fast). Honors .cargo/audit.toml for ignored advisories.
       - name: Install cargo-audit
-        uses: taiki-e/install-action@v2.81.10
+        uses: taiki-e/install-action@7a79fe8c3a13344501c80d99cae481c1c9085912 # v2.81.10
         with:
           tool: cargo-audit
 
