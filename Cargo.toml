@@ -14,7 +14,7 @@ license = "Apache-2.0"
 sz_common = { path = "sz_common" }
 aes = "0.9"
 cbc = "0.2"
-base64 = "0.22"
+base64 = "0.23"
 zeroize = "1.8"
 thiserror = "2"
 libc = "0.2"
